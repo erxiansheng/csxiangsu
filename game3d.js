@@ -3,9 +3,8 @@
 // ==================== 服务器配置 ====================
 // 部署时修改为你的服务器地址
 // 本地开发: 'ws://localhost:8765'
-// 生产环境: 'wss://your-domain.com/ws'
-// const WS_SERVER_URL = 'wss://your-domain.com/ws';  // <- 改成你的域名
-const WS_SERVER_URL = 'ws://121.5.235.253:8765';  // <- 改成你的域名
+// 生产环境: 'wss://your-domain.com'
+const WS_SERVER_URL = 'wss://cs16xs.188np.cn';
 // ===================================================
 
 class PixelCS3D {
