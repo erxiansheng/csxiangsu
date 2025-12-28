@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CS 1.6 像素版 3D</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="menu">
+        <div class="menu-wrapper">
+            <!-- 左侧：游戏玩法说明 -->
+            <div class="info-card gameplay-card">
+                <h3>🎮 游戏玩法</h3>
+                <div class="gameplay-content">
+                    <div class="control-section">
+                        <h4>基础操作</h4>
+                        <p><span class="key">W A S D</span> 移动</p>
+                        <p><span class="key">鼠标</span> 视角控制</p>
+                        <p><span class="key">左键</span> 射击</p>
+                        <p><span class="key">右键</span> 开镜 (AWP)</p>
+                    </div>
+                    <div class="control-section">
+                        <h4>进阶操作</h4>
+                        <p><span class="key">空格</span> 跳跃</p>
+                        <p><span class="key">Ctrl</span> 下蹲</p>
+                        <p><span class="key">R</span> 换弹</p>
+                        <p><span class="key">Q</span> 快速切枪</p>
+                    </div>
+                    <div class="control-section">
+                        <h4>武器切换</h4>
+                        <p><span class="key">1</span> 主武器</p>
+                        <p><span class="key">2</span> 副武器</p>
+                        <p><span class="key">3</span> 刀</p>
+                        <p><span class="key">4</span> 手雷</p>
+                    </div>
+                    <div class="control-section">
+                        <h4>其他</h4>
+                        <p><span class="key">B</span> 购买武器</p>
+                        <p><span class="key">ESC</span> 设置菜单</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 中间：主菜单 -->
+            <div class="menu-container">
+            <h1 class="pixel-title">CS 1.6</h1>
+            <h2 class="pixel-subtitle">3D 像素版</h2>
+            
+            <div class="tab-buttons">
+                <button type="button" id="tabJoin" class="tab-btn active">加入房间</button>
+                <button type="button" id="tabCreate" class="tab-btn">创建房间</button>
+            </div>
+            
+            <div class="input-group">
+                <label>玩家名称</label>
+                <input type="text" id="playerName" placeholder="输入名称" maxlength="12">
+            </div>
+            
+            <div class="input-group">
+                <label>房间号</label>
+                <input type="text" id="roomId" placeholder="输入房间号" maxlength="10">
+            </div>
+            
+            <div id="createOptions" style="display: none;">
+                <div class="input-group">
+                    <label>游戏模式</label>
+                    <select id="gameMode">
+                        <option value="deathmatch">团队竞技 (10分钟)</option>
+                        <option value="defuse">爆破模式 (无时间限制)</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>目标击杀数</label>
+                    <select id="targetKills">
+                        <option value="10">10 击杀</option>
+                        <option value="20" selected>20 击杀</option>
+                        <option value="30">30 击杀</option>
+                        <option value="50">50 击杀</option>
+                        <option value="100">100 击杀</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>选择地图</label>
+                    <select id="mapSelect">
+                        <option value="indoor" selected>室内竞技场 (Indoor)</option>
+                        <option value="dust2">沙漠2 (Dust2)</option>
+                        <option value="shipment">运输船 (Shipment)</option>
+                        <option value="office">办公大楼 (Office)</option>
+                        <option value="warehouse">仓库 (Warehouse)</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="input-group">
+                <label>选择阵营 (每队最多5人)</label>
+                <div class="team-select">
+                    <button type="button" id="teamCT" class="team-btn ct-btn active">反恐精英 (CT)</button>
+                    <button type="button" id="teamT" class="team-btn t-btn">恐怖分子 (T)</button>
+                </div>
+            </div>
+            
+            <button id="joinBtn" class="pixel-btn">加入游戏</button>
+            <button id="createBtn" class="pixel-btn" style="display: none;">创建房间</button>
+            </div>
+            
+            <!-- 右侧：公告卡片 -->
+            <div class="info-card announcement-card">
+                <h3>📢 游戏公告</h3>
+                <div id="announcement-content" class="announcement-content">
+                    <p class="loading-text">正在加载公告...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="game" style="display: none;">
+        <div id="crosshair">+</div>
+        <div id="scope" style="display: none;"></div>
+        <div id="top-hud">
+            <div id="ct-score" class="team-score ct">CT: 0</div>
+            <div id="game-info">
+                <span id="game-timer" style="display: none;">10:00</span>
+                <span id="game-mode-text"></span>
+                目标: <span id="target-kills">20</span> 击杀 | <span id="map-name">沙漠2</span>
+            </div>
+            <div id="t-score" class="team-score t">T: 0</div>
+        </div>
+        <div id="fps-counter">FPS: 0</div>
+        <div id="hud">
+            <div id="health">HP: 100</div>
+            <div id="weapon">AK-47</div>
+            <div id="score">K: 0 / D: 0</div>
+        </div>
+        <div id="killfeed"></div>
+        <div id="settings-menu" style="display: none;">
+            <h3>游戏设置</h3>
+            <div class="settings-group">
+                <label>鼠标灵敏度: <span id="sens-value">5</span></label>
+                <input type="range" id="sensitivity-slider" min="1" max="10" value="5" step="0.5">
+            </div>
+            <div class="settings-group">
+                <label>开镜灵敏度: <span id="scope-sens-value">3</span></label>
+                <input type="range" id="scope-sensitivity-slider" min="1" max="10" value="3" step="0.5">
+            </div>
+            <div class="settings-group">
+                <label>音效音量: <span id="volume-value">100</span>%</label>
+                <input type="range" id="volume-slider" min="0" max="100" value="100" step="5">
+            </div>
+            <div class="settings-buttons">
+                <button id="resumeGame" class="settings-btn">返回游戏</button>
+                <button id="toggleFullscreen" class="settings-btn">切换全屏</button>
+                <button id="exitGame" class="settings-btn exit-btn">退出游戏</button>
+            </div>
+        </div>
+        <div id="death-overlay"></div>
+        <div id="death-screen" style="display: none;">
+            <p>你已阵亡</p>
+            <p><span id="respawn-countdown">3</span> 秒后自动复活</p>
+        </div>
+        <div id="buy-menu" style="display: none;">
+            <h3>选择主武器 (按B关闭)</h3>
+            <div class="buy-options">
+                <button class="buy-btn" data-weapon="ak47">
+                    <img src="image/ak47.jpg" alt="AK-47" class="weapon-img">
+                    <span class="weapon-name">1. AK-47</span>
+                    <span class="weapon-desc">高伤害 | 30发</span>
+                </button>
+                <button class="buy-btn" data-weapon="m4a1">
+                    <img src="image/m4a1.jpg" alt="M4A1" class="weapon-img">
+                    <span class="weapon-name">2. M4A1</span>
+                    <span class="weapon-desc">精准 | 30发</span>
+                </button>
+                <button class="buy-btn" data-weapon="awp">
+                    <img src="image/awp.jpg" alt="AWP" class="weapon-img">
+                    <span class="weapon-name">3. AWP</span>
+                    <span class="weapon-desc">狙击枪 | 10发</span>
+                </button>
+            </div>
+        </div>
+        <div id="game-over" style="display: none;">
+            <h2 id="winner-text">游戏结束</h2>
+            <p id="final-score"></p>
+            <button id="backToMenu" class="pixel-btn">返回主菜单</button>
+        </div>
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="audio.js"></script>
+    <script src="maps.js"></script>
+    <script src="player.js"></script>
+    <script src="weapons.js"></script>
+    <script src="game3d.js"></script>
+</body>
+</html>
