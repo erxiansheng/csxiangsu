@@ -783,3 +783,135 @@ body {
 #game canvas {
     transition: filter 0.3s ease;
 }
+
+/* 击杀反馈图标 */
+#kill-feedback {
+    position: absolute;
+    bottom: 25%;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    z-index: 150;
+    pointer-events: none;
+}
+
+#kill-icon, #kill-streak-icon {
+    display: none;
+    padding: 8px 16px;
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    text-align: center;
+    animation: killFeedbackPop 0.3s ease-out;
+    image-rendering: pixelated;
+}
+
+/* 爆头图标 - 像素风格 */
+#kill-icon.headshot {
+    display: block;
+    background: linear-gradient(180deg, #ff4444 0%, #cc0000 100%);
+    border: 3px solid #ff6666;
+    color: #fff;
+    font-size: 18px;
+    text-shadow: 2px 2px 0 #000;
+    box-shadow: 0 0 20px rgba(255, 0, 0, 0.6), inset 0 0 10px rgba(255, 255, 255, 0.2);
+}
+
+#kill-icon.headshot::before {
+    content: '💀 ';
+}
+
+#kill-icon.headshot::after {
+    content: ' 💀';
+}
+
+/* 普通击杀图标 */
+#kill-icon.kill {
+    display: block;
+    background: linear-gradient(180deg, #ffaa00 0%, #cc8800 100%);
+    border: 3px solid #ffcc44;
+    color: #fff;
+    font-size: 16px;
+    text-shadow: 2px 2px 0 #000;
+    box-shadow: 0 0 15px rgba(255, 170, 0, 0.5);
+}
+
+#kill-icon.kill::before {
+    content: '⚔️ ';
+}
+
+/* 刀杀图标 */
+#kill-icon.knife {
+    display: block;
+    background: linear-gradient(180deg, #aa44ff 0%, #7700cc 100%);
+    border: 3px solid #cc66ff;
+    color: #fff;
+    font-size: 18px;
+    text-shadow: 2px 2px 0 #000;
+    box-shadow: 0 0 20px rgba(170, 68, 255, 0.6);
+}
+
+#kill-icon.knife::before {
+    content: '🔪 ';
+}
+
+/* 连杀图标 */
+#kill-streak-icon.active {
+    display: block;
+    background: linear-gradient(180deg, #00ccff 0%, #0088cc 100%);
+    border: 3px solid #44ddff;
+    color: #fff;
+    font-size: 20px;
+    text-shadow: 2px 2px 0 #000;
+    box-shadow: 0 0 25px rgba(0, 200, 255, 0.7), inset 0 0 15px rgba(255, 255, 255, 0.3);
+}
+
+#kill-streak-icon.streak-3 {
+    background: linear-gradient(180deg, #44ff44 0%, #00cc00 100%);
+    border-color: #66ff66;
+    box-shadow: 0 0 25px rgba(0, 255, 0, 0.7);
+}
+
+#kill-streak-icon.streak-4 {
+    background: linear-gradient(180deg, #ffff00 0%, #cccc00 100%);
+    border-color: #ffff66;
+    box-shadow: 0 0 25px rgba(255, 255, 0, 0.7);
+}
+
+#kill-streak-icon.streak-5 {
+    background: linear-gradient(180deg, #ff8800 0%, #cc6600 100%);
+    border-color: #ffaa44;
+    box-shadow: 0 0 30px rgba(255, 136, 0, 0.8);
+}
+
+#kill-streak-icon.streak-6 {
+    background: linear-gradient(180deg, #ff0000 0%, #cc0000 100%);
+    border-color: #ff4444;
+    box-shadow: 0 0 35px rgba(255, 0, 0, 0.9);
+    animation: killFeedbackPop 0.3s ease-out, streakGlow 0.5s ease-in-out infinite alternate;
+}
+
+@keyframes killFeedbackPop {
+    0% {
+        transform: scale(0.5);
+        opacity: 0;
+    }
+    50% {
+        transform: scale(1.2);
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes streakGlow {
+    0% {
+        box-shadow: 0 0 35px rgba(255, 0, 0, 0.9);
+    }
+    100% {
+        box-shadow: 0 0 50px rgba(255, 0, 0, 1), 0 0 80px rgba(255, 0, 0, 0.5);
+    }
+}

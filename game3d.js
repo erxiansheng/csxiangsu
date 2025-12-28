@@ -517,6 +517,66 @@ class PixelCS3D {
         setTimeout(() => msg.remove(), 3000);
     }
     
+    // 显示击杀反馈图标
+    showKillFeedback(isHeadshot, isKnife, killStreak) {
+        const killIcon = document.getElementById('kill-icon');
+        const streakIcon = document.getElementById('kill-streak-icon');
+        
+        // 清除之前的类
+        killIcon.className = '';
+        streakIcon.className = '';
+        
+        // 显示击杀类型图标
+        if (isHeadshot) {
+            killIcon.className = 'headshot';
+            killIcon.textContent = 'HEADSHOT';
+        } else if (isKnife) {
+            killIcon.className = 'knife';
+            killIcon.textContent = 'KNIFE KILL';
+        } else {
+            killIcon.className = 'kill';
+            killIcon.textContent = 'KILL';
+        }
+        
+        // 显示连杀图标
+        if (killStreak >= 2) {
+            const streakNames = {
+                2: 'DOUBLE KILL',
+                3: 'TRIPLE KILL',
+                4: 'ULTRA KILL',
+                5: 'RAMPAGE',
+                6: 'GODLIKE',
+                7: 'UNSTOPPABLE',
+                8: 'LEGENDARY'
+            };
+            const streakName = streakNames[Math.min(killStreak, 8)];
+            streakIcon.textContent = streakName;
+            streakIcon.className = 'active';
+            
+            // 根据连杀数添加不同颜色
+            if (killStreak >= 6) {
+                streakIcon.classList.add('streak-6');
+            } else if (killStreak >= 5) {
+                streakIcon.classList.add('streak-5');
+            } else if (killStreak >= 4) {
+                streakIcon.classList.add('streak-4');
+            } else if (killStreak >= 3) {
+                streakIcon.classList.add('streak-3');
+            }
+        }
+        
+        // 2秒后隐藏
+        setTimeout(() => {
+            killIcon.className = '';
+            killIcon.textContent = '';
+        }, 2000);
+        
+        setTimeout(() => {
+            streakIcon.className = '';
+            streakIcon.textContent = '';
+        }, 2500);
+    }
+    
     startRespawnTimer() {
         if (this.respawnTimer) return;
         this.respawnCountdown = 3;
@@ -1029,16 +1089,26 @@ class PixelCS3D {
         let hitPoint = null;
         let hitFloor = false;
         
-        // 检测地面碰撞
-        const floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-        const floorIntersect = new THREE.Vector3();
-        raycaster.ray.intersectPlane(floorPlane, floorIntersect);
-        if (floorIntersect && floorIntersect.distanceTo(origin) < hitWallDist) {
-            const floorDist = floorIntersect.distanceTo(origin);
-            if (floorDist < hitWallDist && floorDist < 100) {
-                hitWallDist = floorDist;
-                endPoint = floorIntersect.clone();
-                hitFloor = true;
+        // 检测地面碰撞 - 只有当射线朝下时才检测
+        if (direction.y < 0) {
+            const floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+            const floorIntersect = new THREE.Vector3();
+            const intersected = raycaster.ray.intersectPlane(floorPlane, floorIntersect);
+            
+            // 确保交点在射线前方（不是后方）且在合理范围内
+            if (intersected) {
+                const toIntersect = floorIntersect.clone().sub(origin);
+                const dotProduct = toIntersect.dot(direction);
+                
+                // dotProduct > 0 表示交点在射线前方
+                if (dotProduct > 0) {
+                    const floorDist = floorIntersect.distanceTo(origin);
+                    if (floorDist < hitWallDist && floorDist < 100 && floorDist > 0.5) {
+                        hitWallDist = floorDist;
+                        endPoint = floorIntersect.clone();
+                        hitFloor = true;
+                    }
+                }
             }
         }
         
@@ -1409,6 +1479,9 @@ class PixelCS3D {
                                 this.killStreak = 1;
                             }
                             this.lastKillTime = now;
+                            
+                            // 显示击杀反馈图标
+                            this.showKillFeedback(hit.headshot, hit.knife_kill, this.killStreak);
                             
                             // 播放连杀/爆头语音
                             if (hit.headshot) {
