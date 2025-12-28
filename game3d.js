@@ -5,7 +5,7 @@
 // 本地开发: 'ws://localhost:8765'
 // 生产环境: 'wss://your-domain.com/ws'
 // const WS_SERVER_URL = 'wss://your-domain.com/ws';  // <- 改成你的域名
-const WS_SERVER_URL = 'ws://localhost:8765';  // <- 改成你的域名
+const WS_SERVER_URL = 'ws://121.5.235.253:8765';  // <- 改成你的域名
 // ===================================================
 
 class PixelCS3D {
