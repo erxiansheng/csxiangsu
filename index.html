@@ -4,9 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CS 1.6 像素版 3D</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect fill='%23333' width='32' height='32' rx='4'/><text x='16' y='22' font-size='16' font-family='Arial' font-weight='bold' fill='%23ff6600' text-anchor='middle'>CS</text></svg>">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <!-- 像素风格背景动画 -->
+    <div id="pixel-bg">
+        <canvas id="pixel-canvas"></canvas>
+    </div>
+    
+    <!-- 背景音乐控制 -->
+    <div id="music-control">
+        <button id="music-toggle" class="music-btn">🔊</button>
+    </div>
+    
     <div id="menu">
         <div class="menu-wrapper">
             <!-- 左侧：游戏玩法说明 -->
@@ -33,6 +44,7 @@
                         <p><span class="key">2</span> 副武器</p>
                         <p><span class="key">3</span> 刀</p>
                         <p><span class="key">4</span> 手雷</p>
+                        <p><span class="key">5</span> C4炸弹</p>
                     </div>
                     <div class="control-section">
                         <h4>其他</h4>
@@ -67,10 +79,10 @@
                     <label>游戏模式</label>
                     <select id="gameMode">
                         <option value="deathmatch">团队竞技 (10分钟)</option>
-                        <option value="defuse">爆破模式 (无时间限制)</option>
+                        <option value="defuse">爆破模式 (回合制)</option>
                     </select>
                 </div>
-                <div class="input-group">
+                <div class="input-group" id="targetKillsGroup">
                     <label>目标击杀数</label>
                     <select id="targetKills">
                         <option value="10">10 击杀</option>
@@ -84,7 +96,6 @@
                     <label>选择地图</label>
                     <select id="mapSelect">
                         <option value="indoor" selected>室内竞技场 (Indoor)</option>
-                        <option value="dust2">沙漠2 (Dust2)</option>
                         <option value="shipment">运输船 (Shipment)</option>
                         <option value="office">办公大楼 (Office)</option>
                         <option value="warehouse">仓库 (Warehouse)</option>
@@ -129,9 +140,46 @@
             <div id="game-info">
                 <span id="game-timer" style="display: none;">10:00</span>
                 <span id="game-mode-text"></span>
-                目标: <span id="target-kills">20</span> 击杀 | <span id="map-name">沙漠2</span>
+                <span id="round-info" style="display: none;">回合 <span id="current-round">1</span>/<span id="max-rounds">10</span></span>
+                <span id="deathmatch-info">目标: <span id="target-kills">20</span> 击杀 | </span>
+                <span id="map-name">沙漠2</span>
             </div>
             <div id="t-score" class="team-score t">T: 0</div>
+        </div>
+        
+        <!-- 爆破模式专用UI -->
+        <div id="defuse-hud" style="display: none;">
+            <div id="c4-status"></div>
+            <div id="c4-timer-display" style="display: none;">
+                <span class="c4-icon">💣</span>
+                <span id="c4-countdown">40</span>
+            </div>
+            <div id="defuse-progress-container" style="display: none;">
+                <div id="defuse-progress-bar"><div id="defuse-progress"></div></div>
+                <span id="defuse-text">拆弹中...</span>
+            </div>
+            <div id="plant-progress-container" style="display: none;">
+                <div id="plant-progress-bar"><div id="plant-progress"></div></div>
+                <span id="plant-text">安放C4中...</span>
+            </div>
+            <div id="plant-hint" style="display: none;">按 E 或 鼠标左键 安放C4</div>
+            <div id="defuse-hint" style="display: none;">按住 E 拆除C4</div>
+        </div>
+        
+        <!-- 包点标记 -->
+        <div id="bomb-site-a" class="bomb-site-marker" style="display: none;">A</div>
+        <div id="bomb-site-b" class="bomb-site-marker" style="display: none;">B</div>
+        
+        <!-- 回合结束提示 -->
+        <div id="round-end-screen" style="display: none;">
+            <div id="round-winner"></div>
+            <div id="round-reason"></div>
+            <div id="round-score"></div>
+        </div>
+        
+        <!-- 冻结时间提示 -->
+        <div id="freeze-time-overlay" style="display: none;">
+            <div id="freeze-countdown">准备阶段</div>
         </div>
         <div id="fps-counter">FPS: 0</div>
         <div id="hud">
@@ -163,7 +211,7 @@
         <div id="death-overlay"></div>
         <div id="death-screen" style="display: none;">
             <p>你已阵亡</p>
-            <p><span id="respawn-countdown">3</span> 秒后自动复活</p>
+            <p id="respawn-info"><span id="respawn-countdown">3</span> 秒后自动复活</p>
         </div>
         <div id="buy-menu" style="display: none;">
             <h3>选择主武器 (按B关闭)</h3>
@@ -197,6 +245,8 @@
     <script src="maps.js"></script>
     <script src="player.js"></script>
     <script src="weapons.js"></script>
+    <script src="background.js"></script>
+    <script src="minimap.js"></script>
     <script src="game3d.js"></script>
 </body>
 </html>

@@ -43,36 +43,25 @@ const MapConfigs = {
         floorColor1: '#c4a35a', floorColor2: '#b8963d',
         wallColor1: '#c9a227', wallColor2: '#8b7355',
         skyColor: 0x87ceeb,
-        obstacles: [
-            // A点区域
-            {x: -80, y: 10, z: -80, w: 30, h: 20, d: 30},
-            {x: -60, y: 5, z: -60, w: 15, h: 10, d: 15},
-            // A大道
-            {x: -90, y: 12, z: -20, w: 8, h: 24, d: 60},
-            {x: -70, y: 8, z: 10, w: 20, h: 16, d: 8},
-            // 中路 - 十字路口掩体
-            {x: -15, y: 6, z: 0, w: 10, h: 12, d: 25},
-            {x: 15, y: 6, z: 0, w: 10, h: 12, d: 25},
-            {x: 0, y: 6, z: -15, w: 25, h: 12, d: 10},
-            {x: 0, y: 6, z: 15, w: 25, h: 12, d: 10},
-            // 中路箱子
-            {x: -20, y: 4, z: 30, w: 8, h: 8, d: 8},
-            {x: 20, y: 4, z: -30, w: 8, h: 8, d: 8},
-            // B点区域
-            {x: 80, y: 10, z: 80, w: 30, h: 20, d: 30},
-            {x: 60, y: 5, z: 60, w: 15, h: 10, d: 15},
-            // B通道
-            {x: 50, y: 12, z: 20, w: 8, h: 24, d: 50},
-            {x: 70, y: 8, z: -10, w: 20, h: 16, d: 8},
-            // 狙击位
-            {x: -40, y: 15, z: -90, w: 20, h: 30, d: 10},
-            {x: 40, y: 15, z: 90, w: 20, h: 30, d: 10},
-            // 箱子
-            {x: -30, y: 4, z: -40, w: 8, h: 8, d: 8},
-            {x: 30, y: 4, z: 40, w: 8, h: 8, d: 8},
-            {x: 0, y: 4, z: -60, w: 8, h: 8, d: 8},
-            {x: 0, y: 4, z: 60, w: 8, h: 8, d: 8}
-        ]
+        mapSize: 300, // 大地图
+        // 沙漠地图 - 无障碍物，只保留包点
+        obstacles: [],
+        // 爆破模式包点位置
+        bombSites: {
+            A: { x: 180, z: -180, radius: 40 },
+            B: { x: -180, z: 180, radius: 40 }
+        },
+        // 出生点
+        spawnPoints: {
+            ct: [
+                {x: 250, z: 240}, {x: 240, z: 250}, {x: 260, z: 230},
+                {x: 230, z: 260}, {x: 270, z: 240}
+            ],
+            t: [
+                {x: -250, z: -240}, {x: -240, z: -250}, {x: -260, z: -230},
+                {x: -230, z: -260}, {x: -270, z: -240}
+            ]
+        }
     },
     'shipment': {
         floorColor1: '#5a5a5a', floorColor2: '#4a4a4a',
@@ -620,8 +609,15 @@ class MapBuilder {
         this.scene.add(graffiti);
     }
     
-    // 获取或创建几何体（带缓存）- 全部使用平面
+    // 获取或创建几何体（带缓存）- 使用立方体代替平面
     getGeometry(w, h, d) {
+        // 使用BoxGeometry创建完整的立方体
+        const cacheKey = `box_${w}_${h}_${d}`;
+        if (!MapCache.geometries[cacheKey]) {
+            MapCache.geometries[cacheKey] = new THREE.BoxGeometry(w, h, d);
+        }
+        return { geom: MapCache.geometries[cacheKey], isBox: true };
+    }etry(w, h, d) {
         // 所有墙体都使用平面（单层）
         const planeW = Math.max(w, d);
         const cacheKey = `plane_${planeW}_${h}`;
@@ -661,13 +657,15 @@ class MapBuilder {
     createMap(mapName) {
         const mapConfig = MapConfigs[mapName] || MapConfigs['dust2'];
         
-        // 室内竞技场使用较小的地板
+        // 根据地图配置设置大小
         const isIndoor = mapName === 'indoor';
-        const floorSize = isIndoor ? 250 : 500;
-        const boundarySize = isIndoor ? 125 : 125;
+        const mapSize = mapConfig.mapSize || 125;
+        const floorSize = mapSize * 2 + 50;
+        const boundarySize = mapSize;
         
         // 地板 - 带纹理
         const floorTex = this.createFloorTexture(mapConfig.floorColor1, mapConfig.floorColor2);
+        floorTex.repeat.set(floorSize / 16, floorSize / 16);
         
         // 地板几何体缓存
         const floorKey = `floor_${floorSize}`;
@@ -690,14 +688,8 @@ class MapBuilder {
             const wall = new THREE.Mesh(geomInfo.geom, mat);
             wall.position.set(x, y, z);
             
-            if (geomInfo.isPlane) {
-                // 平面旋转到正确方向
-                if (geomInfo.faceZ) {
-                    wall.rotation.y = Math.PI / 2;
-                }
-            }
             if (rotation) {
-                wall.rotation.y += rotation;
+                wall.rotation.y = rotation;
             }
             self.scene.add(wall);
             const expandedW = rotation ? Math.max(w, d) * 1.2 : w;
@@ -776,12 +768,145 @@ class MapBuilder {
         
         this.scene.background = new THREE.Color(mapConfig.skyColor);
         
+        // 添加包点涂鸦和动画（爆破模式地图）
+        if (mapConfig.bombSites) {
+            this.createBombSiteMarkers(mapConfig.bombSites);
+        }
+        
         // 室内地图不需要雾效
         if (!isIndoor) {
             this.scene.fog = new THREE.Fog(mapConfig.skyColor, 100, 500);
         }
         
         return this.walls;
+    }
+    
+    // 创建包点涂鸦和动画效果
+    createBombSiteMarkers(bombSites) {
+        // A点涂鸦
+        if (bombSites.A) {
+            this.createSiteGraffiti('A', bombSites.A.x, bombSites.A.z, '#ff6600');
+            this.createBombSiteAnimation(bombSites.A.x, bombSites.A.z, bombSites.A.radius, '#ff6600');
+        }
+        
+        // B点涂鸦
+        if (bombSites.B) {
+            this.createSiteGraffiti('B', bombSites.B.x, bombSites.B.z, '#ff6600');
+            this.createBombSiteAnimation(bombSites.B.x, bombSites.B.z, bombSites.B.radius, '#ff6600');
+        }
+    }
+    
+    // 创建包点涂鸦
+    createSiteGraffiti(siteName, x, z, color) {
+        // 创建涂鸦纹理
+        const canvas = document.createElement('canvas');
+        canvas.width = 256;
+        canvas.height = 256;
+        const ctx = canvas.getContext('2d');
+        
+        // 透明背景
+        ctx.clearRect(0, 0, 256, 256);
+        
+        // 绘制大字母
+        ctx.fillStyle = color;
+        ctx.font = 'bold 180px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.shadowColor = 'rgba(0,0,0,0.8)';
+        ctx.shadowBlur = 10;
+        ctx.shadowOffsetX = 5;
+        ctx.shadowOffsetY = 5;
+        ctx.fillText(siteName, 128, 128);
+        
+        // 添加边框效果
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 4;
+        ctx.strokeText(siteName, 128, 128);
+        
+        // 添加装饰圆圈
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 3;
+        ctx.shadowBlur = 5;
+        ctx.beginPath();
+        ctx.arc(128, 128, 110, 0, Math.PI * 2);
+        ctx.stroke();
+        
+        const texture = new THREE.CanvasTexture(canvas);
+        
+        // 创建地面涂鸦
+        const graffitiGeom = new THREE.PlaneGeometry(30, 30);
+        const graffitiMat = new THREE.MeshBasicMaterial({
+            map: texture,
+            transparent: true,
+            opacity: 0.8,
+            side: THREE.DoubleSide,
+            depthWrite: false
+        });
+        
+        const graffiti = new THREE.Mesh(graffitiGeom, graffitiMat);
+        graffiti.position.set(x, 0.1, z);
+        graffiti.rotation.x = -Math.PI / 2;
+        this.scene.add(graffiti);
+    }
+    
+    // 创建包点动画效果（脉冲圆环）
+    createBombSiteAnimation(x, z, radius, color) {
+        // 创建多个圆环
+        const rings = [];
+        for (let i = 0; i < 3; i++) {
+            const ringGeom = new THREE.RingGeometry(radius * 0.8, radius, 32);
+            const ringMat = new THREE.MeshBasicMaterial({
+                color: color,
+                transparent: true,
+                opacity: 0.3,
+                side: THREE.DoubleSide,
+                depthWrite: false
+            });
+            
+            const ring = new THREE.Mesh(ringGeom, ringMat);
+            ring.position.set(x, 0.05 + i * 0.02, z);
+            ring.rotation.x = -Math.PI / 2;
+            ring.userData.phase = i * (Math.PI * 2 / 3);
+            ring.userData.baseOpacity = 0.3;
+            this.scene.add(ring);
+            rings.push(ring);
+        }
+        
+        // 动画更新函数
+        const animateRings = () => {
+            const time = Date.now() / 1000;
+            rings.forEach((ring, i) => {
+                const phase = ring.userData.phase;
+                const pulse = Math.sin(time * 2 + phase) * 0.5 + 0.5;
+                ring.material.opacity = ring.userData.baseOpacity * (0.5 + pulse * 0.5);
+                ring.scale.set(0.9 + pulse * 0.2, 0.9 + pulse * 0.2, 1);
+            });
+            requestAnimationFrame(animateRings);
+        };
+        animateRings();
+        
+        // 创建中心发光点
+        const glowGeom = new THREE.CircleGeometry(5, 16);
+        const glowMat = new THREE.MeshBasicMaterial({
+            color: color,
+            transparent: true,
+            opacity: 0.5,
+            side: THREE.DoubleSide
+        });
+        const glow = new THREE.Mesh(glowGeom, glowMat);
+        glow.position.set(x, 0.08, z);
+        glow.rotation.x = -Math.PI / 2;
+        this.scene.add(glow);
+        
+        // 发光点动画
+        const animateGlow = () => {
+            const time = Date.now() / 1000;
+            const pulse = Math.sin(time * 3) * 0.5 + 0.5;
+            glow.material.opacity = 0.3 + pulse * 0.4;
+            glow.scale.set(1 + pulse * 0.3, 1 + pulse * 0.3, 1);
+            requestAnimationFrame(animateGlow);
+        };
+        animateGlow();
     }
 }
 

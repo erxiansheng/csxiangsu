@@ -45,7 +45,8 @@ const WeaponConfigs = {
         slot: 'secondary' 
     },
     'knife': { ammo: -1, fireRate: 500, recoil: 0, recoilIncrease: 0, maxRecoil: 0, spread: 0, auto: false, name: '军刀', slot: 'melee' },
-    'grenade': { ammo: 1, fireRate: 1000, recoil: 0, recoilIncrease: 0, maxRecoil: 0, spread: 0, auto: false, name: '手雷', slot: 'grenade' }
+    'grenade': { ammo: 1, fireRate: 1000, recoil: 0, recoilIncrease: 0, maxRecoil: 0, spread: 0, auto: false, name: '手雷', slot: 'grenade' },
+    'c4': { ammo: -1, fireRate: 0, recoil: 0, recoilIncrease: 0, maxRecoil: 0, spread: 0, auto: false, name: 'C4炸弹', slot: 'bomb' }
 };
 
 // 武器模型创建器
@@ -91,8 +92,16 @@ class WeaponModelBuilder {
             case 'pistol': this.createPistol(gunModel); break;
             case 'knife': this.createKnife(gunModel); break;
             case 'grenade': this.createGrenade(gunModel); break;
+            case 'c4': this.createC4(gunModel); break;
             default: this.createAK47(gunModel);
         }
+        
+        // 禁用frustum culling，防止枪械模型在转动视角时消失
+        gunModel.traverse((child) => {
+            if (child.isMesh) {
+                child.frustumCulled = false;
+            }
+        });
         
         return gunModel;
     }
@@ -116,59 +125,156 @@ class WeaponModelBuilder {
     }
     
     createAK47(gunModel) {
-        // 枪身 - 木质护木
-        const body = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.12, 0.5), this.woodMat);
-        body.position.set(0, 0, -0.25);
-        gunModel.add(body);
+        // 深色金属材质
+        const darkMetalMat = new THREE.MeshLambertMaterial({ color: 0x1a1a1a });
+        // 橙色/黄色金属材质（瞄准镜/机匣细节）
+        const orangeMat = new THREE.MeshLambertMaterial({ color: 0xd4a017 });
+        // 深棕色木材
+        const darkWoodMat = new THREE.MeshLambertMaterial({ color: 0x3d2817 });
+        // 浅棕色木材
+        const lightWoodMat = new THREE.MeshLambertMaterial({ color: 0x6b4423 });
         
-        // 机匣
-        const receiver = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.1, 0.25), this.metalMat);
-        receiver.position.set(0, 0.02, -0.1);
-        gunModel.add(receiver);
-        
-        // AK-47 涂鸦标签 - 右侧（外侧）
-        const labelTexture = this.createTextTexture('AK-47-内测外观', '#5c4033', '#FFD700');
-        const labelMat = new THREE.MeshBasicMaterial({ map: labelTexture, transparent: true });
-        const labelRight = new THREE.Mesh(new THREE.PlaneGeometry(0.45, 0.12), labelMat);
-        labelRight.position.set(0.041, 0, -0.25);
-        labelRight.rotation.y = Math.PI / 2;
-        gunModel.add(labelRight);
-        
-        // AK-47 涂鸦标签 - 左侧（内侧，玩家视角可见）
-        const labelTexture2 = this.createTextTexture('AK-47-内测外观', '#5c4033', '#FFD700');
-        const labelMat2 = new THREE.MeshBasicMaterial({ map: labelTexture2, transparent: true });
-        const labelLeft = new THREE.Mesh(new THREE.PlaneGeometry(0.45, 0.12), labelMat2);
-        labelLeft.position.set(-0.041, 0, -0.25);
-        labelLeft.rotation.y = -Math.PI / 2;
-        gunModel.add(labelLeft);
-        
-        // 枪管
-        const barrel = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, 0.4), this.metalMat);
-        barrel.position.set(0, 0.04, -0.6);
-        gunModel.add(barrel);
-        
-        // 准星
-        const frontSight = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.06, 0.02), this.metalMat);
-        frontSight.position.set(0, 0.1, -0.75);
-        gunModel.add(frontSight);
-        
-        // 弹匣 - 弯曲的AK弹匣
-        const magMat = new THREE.MeshLambertMaterial({ color: 0x4a3a2a });
-        const mag = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.2, 0.08), magMat);
-        mag.position.set(0, -0.14, -0.18);
-        mag.rotation.x = 0.2;
-        gunModel.add(mag);
-        
-        // 枪托
-        const stock = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.1, 0.2), this.woodMat);
-        stock.position.set(0, -0.02, 0.1);
+        // === 枪托 - 木质，带弧度 ===
+        const stock = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.09, 0.22), darkWoodMat);
+        stock.position.set(0, -0.02, 0.12);
         gunModel.add(stock);
+        // 枪托底部
+        const stockBottom = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.06, 0.08), darkWoodMat);
+        stockBottom.position.set(0, -0.06, 0.2);
+        gunModel.add(stockBottom);
+        // 枪托肩垫
+        const stockPad = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.1, 0.02), this.metalMat);
+        stockPad.position.set(0, -0.02, 0.24);
+        gunModel.add(stockPad);
         
-        // 握把
-        const grip = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.12, 0.04), this.woodMat);
-        grip.position.set(0, -0.1, 0);
-        grip.rotation.x = 0.3;
+        // === 机匣 - 黑色金属 ===
+        const receiver = new THREE.Mesh(new THREE.BoxGeometry(0.065, 0.085, 0.28), darkMetalMat);
+        receiver.position.set(0, 0.02, -0.08);
+        gunModel.add(receiver);
+        // 机匣顶盖
+        const receiverTop = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.025, 0.22), darkMetalMat);
+        receiverTop.position.set(0, 0.065, -0.06);
+        gunModel.add(receiverTop);
+        // 抛壳口
+        const ejectionPort = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.03, 0.06), new THREE.MeshLambertMaterial({ color: 0x333333 }));
+        ejectionPort.position.set(0.035, 0.04, -0.05);
+        gunModel.add(ejectionPort);
+        
+        // === 瞄准镜座 - 橙色/金色 ===
+        const sightBase = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.035, 0.08), orangeMat);
+        sightBase.position.set(0, 0.085, -0.02);
+        gunModel.add(sightBase);
+        // 后照门
+        const rearSight = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.025, 0.015), orangeMat);
+        rearSight.position.set(0, 0.105, 0.01);
+        gunModel.add(rearSight);
+        // 后照门缺口
+        const rearSightNotch = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.03, 0.02), darkMetalMat);
+        rearSightNotch.position.set(0, 0.11, 0.01);
+        gunModel.add(rearSightNotch);
+        
+        // === 护木 - 木质 ===
+        const handguard = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.1, 0.18), lightWoodMat);
+        handguard.position.set(0, 0, -0.3);
+        gunModel.add(handguard);
+        // 护木上部金属散热片
+        const handguardTop = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.02, 0.16), darkMetalMat);
+        handguardTop.position.set(0, 0.055, -0.3);
+        gunModel.add(handguardTop);
+        // 护木下部
+        const handguardBottom = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.03, 0.14), darkWoodMat);
+        handguardBottom.position.set(0, -0.06, -0.3);
+        gunModel.add(handguardBottom);
+        
+        // === 导气管 - 金属 ===
+        const gasBlock = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.035, 0.04), darkMetalMat);
+        gasBlock.position.set(0, 0.06, -0.42);
+        gunModel.add(gasBlock);
+        const gasTube = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.02, 0.25), darkMetalMat);
+        gasTube.position.set(0, 0.075, -0.28);
+        gunModel.add(gasTube);
+        
+        // === 枪管 - 黑色金属 ===
+        const barrel = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.035, 0.35), darkMetalMat);
+        barrel.position.set(0, 0.035, -0.58);
+        gunModel.add(barrel);
+        // 枪管内膛
+        const barrelInner = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.02, 0.36), new THREE.MeshLambertMaterial({ color: 0x111111 }));
+        barrelInner.position.set(0, 0.035, -0.58);
+        gunModel.add(barrelInner);
+        
+        // === 准星座 ===
+        const frontSightBase = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, 0.025), darkMetalMat);
+        frontSightBase.position.set(0, 0.06, -0.72);
+        gunModel.add(frontSightBase);
+        // 准星
+        const frontSight = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.055, 0.015), darkMetalMat);
+        frontSight.position.set(0, 0.095, -0.72);
+        gunModel.add(frontSight);
+        // 准星护圈
+        const sightGuardLeft = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.04, 0.015), darkMetalMat);
+        sightGuardLeft.position.set(-0.018, 0.085, -0.72);
+        gunModel.add(sightGuardLeft);
+        const sightGuardRight = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.04, 0.015), darkMetalMat);
+        sightGuardRight.position.set(0.018, 0.085, -0.72);
+        gunModel.add(sightGuardRight);
+        
+        // === 枪口制退器 ===
+        const muzzleBrake = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.045, 0.06), darkMetalMat);
+        muzzleBrake.position.set(0, 0.035, -0.78);
+        gunModel.add(muzzleBrake);
+        // 枪口开槽
+        const muzzleSlot1 = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.015, 0.02), new THREE.MeshLambertMaterial({ color: 0x0a0a0a }));
+        muzzleSlot1.position.set(0, 0.055, -0.77);
+        gunModel.add(muzzleSlot1);
+        const muzzleSlot2 = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.015, 0.02), new THREE.MeshLambertMaterial({ color: 0x0a0a0a }));
+        muzzleSlot2.position.set(0, 0.015, -0.77);
+        gunModel.add(muzzleSlot2);
+        
+        // === 弹匣 - 弯曲的AK弹匣 ===
+        const magMat = new THREE.MeshLambertMaterial({ color: 0x2a2a2a });
+        const mag = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.18, 0.07), magMat);
+        mag.position.set(0, -0.12, -0.15);
+        mag.rotation.x = 0.18;
+        gunModel.add(mag);
+        // 弹匣底部
+        const magBottom = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.025, 0.06), magMat);
+        magBottom.position.set(0, -0.22, -0.12);
+        mag.rotation.x = 0.18;
+        gunModel.add(magBottom);
+        // 弹匣卡笋
+        const magRelease = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.025, 0.02), darkMetalMat);
+        magRelease.position.set(0, -0.02, -0.12);
+        gunModel.add(magRelease);
+        
+        // === 握把 - 木质 ===
+        const grip = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.1, 0.04), darkWoodMat);
+        grip.position.set(0, -0.08, 0.02);
+        grip.rotation.x = 0.25;
         gunModel.add(grip);
+        // 握把底部
+        const gripBottom = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.02, 0.035), darkWoodMat);
+        gripBottom.position.set(0, -0.14, 0.04);
+        gunModel.add(gripBottom);
+        
+        // === 扳机护圈 ===
+        const triggerGuard = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.025, 0.06), darkMetalMat);
+        triggerGuard.position.set(0, -0.04, -0.02);
+        gunModel.add(triggerGuard);
+        // 扳机
+        const trigger = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.03, 0.015), darkMetalMat);
+        trigger.position.set(0, -0.03, -0.01);
+        gunModel.add(trigger);
+        
+        // === 选择器/保险 ===
+        const selector = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.015, 0.04), darkMetalMat);
+        selector.position.set(0.04, 0.01, 0.02);
+        gunModel.add(selector);
+        
+        // === 拉机柄 ===
+        const chargingHandle = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.02, 0.03), darkMetalMat);
+        chargingHandle.position.set(0.045, 0.04, -0.02);
+        gunModel.add(chargingHandle);
         
         this.addArmsWithForegrip(gunModel, -0.4);
         gunModel.position.set(0.25, -0.2, -0.4);
@@ -399,5 +505,57 @@ class WeaponModelBuilder {
         
         gunModel.position.set(0.25, -0.2, -0.4);
         gunModel.rotation.set(0, 0.08, 0);
+    }
+    
+    createC4(gunModel) {
+        const c4Mat = new THREE.MeshLambertMaterial({ color: 0x2d2d2d });
+        const wireMat = new THREE.MeshLambertMaterial({ color: 0x333333 });
+        
+        // C4主体
+        const body = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.08, 0.1), c4Mat);
+        body.position.set(0, 0, -0.1);
+        gunModel.add(body);
+        
+        // 红色指示灯
+        const lightMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+        const light = new THREE.Mesh(new THREE.SphereGeometry(0.015, 8, 8), lightMat);
+        light.position.set(0, 0.045, -0.1);
+        gunModel.add(light);
+        
+        // 线缆
+        const wire1 = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.08, 8), wireMat);
+        wire1.position.set(0.05, 0, -0.05);
+        wire1.rotation.z = Math.PI / 4;
+        gunModel.add(wire1);
+        
+        const wire2 = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.08, 8), wireMat);
+        wire2.position.set(-0.05, 0, -0.05);
+        wire2.rotation.z = -Math.PI / 4;
+        gunModel.add(wire2);
+        
+        // 数字显示屏
+        const screenMat = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+        const screen = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.03, 0.005), screenMat);
+        screen.position.set(0, 0.02, -0.155);
+        gunModel.add(screen);
+        
+        // 握C4的手
+        const rightHand = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.07, 0.1), this.skinMat);
+        rightHand.position.set(0.08, -0.04, 0);
+        gunModel.add(rightHand);
+        const rightSleeve = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.09, 0.18), this.sleeveMat);
+        rightSleeve.position.set(0.1, -0.06, 0.14);
+        gunModel.add(rightSleeve);
+        
+        // 左手托住C4
+        const leftHand = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.08), this.skinMat);
+        leftHand.position.set(-0.08, -0.04, -0.1);
+        gunModel.add(leftHand);
+        const leftSleeve = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.15), this.sleeveMat);
+        leftSleeve.position.set(-0.12, -0.06, 0);
+        gunModel.add(leftSleeve);
+        
+        gunModel.position.set(0.2, -0.15, -0.35);
+        gunModel.rotation.set(0.1, 0.08, 0);
     }
 }

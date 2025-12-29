@@ -72,6 +72,14 @@ class AudioSystem {
             'explosion1': 'yinxiao/weapons/hegrenade-1.wav',
             'explosion2': 'yinxiao/weapons/hegrenade-2.wav',
             'c4_explode': 'yinxiao/weapons/c4_explode1.wav',
+            'c4_plant': 'yinxiao/weapons/c4_plant.wav',
+            'c4_disarm': 'yinxiao/weapons/c4_disarm.wav',
+            'c4_disarmed': 'yinxiao/weapons/c4_disarmed.wav',
+            'c4_beep1': 'yinxiao/weapons/c4_beep1.wav',
+            'c4_beep2': 'yinxiao/weapons/c4_beep2.wav',
+            'c4_beep3': 'yinxiao/weapons/c4_beep3.wav',
+            'c4_beep4': 'yinxiao/weapons/c4_beep4.wav',
+            'c4_beep5': 'yinxiao/weapons/c4_beep5.wav',
             // 击中音效
             'headshot': 'yinxiao/weapons/headshot2.wav',
             // 连杀音效
@@ -84,6 +92,11 @@ class AudioSystem {
             'multikill_6': 'yinxiao/liansha/MultiKill_6_GR.wav',
             'multikill_7': 'yinxiao/liansha/MultiKill_7_GR.wav',
             'multikill_8': 'yinxiao/liansha/MultiKill_8_GR.wav',
+            // 死亡音效
+            'die1': 'yinxiao/player/die1.wav',
+            'die2': 'yinxiao/player/die2.wav',
+            'die3': 'yinxiao/player/die3.wav',
+            'death6': 'yinxiao/player/death6.wav',
             // 通用音效
             'dryfire_rifle': 'yinxiao/weapons/dryfire_rifle.wav',
             'dryfire_pistol': 'yinxiao/weapons/dryfire_pistol.wav'
@@ -606,6 +619,31 @@ class AudioSystem {
         }
     }
     
+    // 播放死亡音效
+    playDeathSound() {
+        const deathSounds = ['die1', 'die2', 'die3', 'death6'].filter(s => this.sounds[s]);
+        if (deathSounds.length > 0) {
+            const soundName = deathSounds[Math.floor(Math.random() * deathSounds.length)];
+            this.playSound(soundName, 0.8);
+            return;
+        }
+        // 备用合成音效
+        if (!this.audioCtx) return;
+        const ctx = this.audioCtx;
+        const duration = 0.5;
+        const bufferSize = ctx.sampleRate * duration;
+        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+            const t = i / bufferSize;
+            data[i] = Math.sin(2 * Math.PI * (200 - t * 150) * t) * Math.exp(-t * 4) * 0.5;
+        }
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+        source.connect(this.masterGain);
+        source.start();
+    }
+    
     playKnifeSound() {
         // 优先使用真实音效
         if (this.sounds['knife_slash1'] && this.sounds['knife_slash2']) {
@@ -701,5 +739,53 @@ class AudioSystem {
         lowpass.connect(gain);
         gain.connect(this.masterGain);
         source.start();
+    }
+    
+    // C4安放音效
+    playC4PlantSound() {
+        if (this.sounds['c4_plant']) {
+            this.playSound('c4_plant', 0.7);
+        }
+    }
+    
+    // C4拆除音效
+    playC4DefuseSound() {
+        if (this.sounds['c4_disarm']) {
+            this.playSound('c4_disarm', 0.6);
+        }
+    }
+    
+    // C4拆除成功音效
+    playC4DefusedSound() {
+        if (this.sounds['c4_disarmed']) {
+            this.playSound('c4_disarmed', 0.8);
+        }
+    }
+    
+    // C4爆炸音效
+    playC4ExplodeSound() {
+        if (this.sounds['c4_explode']) {
+            this.playSound('c4_explode', 1.0);
+        } else {
+            this.playExplosionSound();
+        }
+    }
+    
+    // C4滴滴声（根据剩余时间选择不同音效）
+    playC4BeepSound(remainingTime) {
+        let beepSound = 'c4_beep1';
+        if (remainingTime <= 5) {
+            beepSound = 'c4_beep5';
+        } else if (remainingTime <= 10) {
+            beepSound = 'c4_beep4';
+        } else if (remainingTime <= 20) {
+            beepSound = 'c4_beep3';
+        } else if (remainingTime <= 30) {
+            beepSound = 'c4_beep2';
+        }
+        
+        if (this.sounds[beepSound]) {
+            this.playSound(beepSound, 0.5);
+        }
     }
 }
