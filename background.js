@@ -748,4 +748,9 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('click', startMusicOnInteraction);
     document.addEventListener('keydown', startMusicOnInteraction);
     document.addEventListener('touchstart', startMusicOnInteraction);
+    
+    // 初始化地图选择
+    if (typeof initMapSelect === 'function') {
+        initMapSelect();
+    }
 });

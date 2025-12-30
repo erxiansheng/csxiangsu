@@ -1,10 +1,10 @@
 // CS 1.6 像素风格 3D FPS 游戏 - 主模块
 
 // ==================== 服务器配置 ====================
-// 部署时修改为你的服务器地址
-// 本地开发: 'ws://localhost:8765'
-// 生产环境: 'wss://your-domain.com'
-const WS_SERVER_URL = 'ws://localhost:8765';
+// 默认服务器地址，可在页面上配置覆盖
+const DEFAULT_WS_SERVER_URL = 'ws://192.168.31.134:8765';
+// 从localStorage读取自定义服务器地址，如果没有则使用默认地址
+let WS_SERVER_URL = localStorage.getItem('cs_server_url') || DEFAULT_WS_SERVER_URL;
 // ===================================================
 
 class PixelCS3D {
@@ -123,6 +123,14 @@ class PixelCS3D {
         this.c4Glow = null;
         this.c4Beam = null;
         
+        // 自定义地图
+        this.customMapData = null;
+        
+        // 观战模式
+        this.isSpectating = false;
+        this.spectatingPlayerId = null;
+        this.spectatorTargets = [];
+        
         this.audio = new AudioSystem();
         this.weaponBuilder = null;
         
@@ -155,6 +163,47 @@ class PixelCS3D {
         
         this.preloadMaps();
         this.loadAnnouncement();
+        this.initCustomMapImport();
+        this.initServerConfig();
+    }
+    
+    // 初始化服务器配置
+    initServerConfig() {
+        const serverUrlInput = document.getElementById('serverUrl');
+        const saveServerBtn = document.getElementById('saveServerBtn');
+        const currentServerSpan = document.getElementById('currentServer');
+        
+        if (!serverUrlInput || !saveServerBtn) return;
+        
+        // 显示当前服务器地址
+        const savedUrl = localStorage.getItem('cs_server_url');
+        if (savedUrl) {
+            serverUrlInput.value = savedUrl;
+            currentServerSpan.textContent = '当前: ' + savedUrl;
+        } else {
+            currentServerSpan.textContent = '当前: 默认服务器';
+        }
+        
+        saveServerBtn.addEventListener('click', () => {
+            const url = serverUrlInput.value.trim();
+            if (url) {
+                // 验证URL格式
+                if (!url.startsWith('ws://') && !url.startsWith('wss://')) {
+                    alert('服务器地址必须以 ws:// 或 wss:// 开头');
+                    return;
+                }
+                localStorage.setItem('cs_server_url', url);
+                WS_SERVER_URL = url;
+                currentServerSpan.textContent = '当前: ' + url;
+                alert('服务器地址已保存');
+            } else {
+                // 清除自定义服务器，使用默认
+                localStorage.removeItem('cs_server_url');
+                WS_SERVER_URL = DEFAULT_WS_SERVER_URL;
+                currentServerSpan.textContent = '当前: 默认服务器';
+                alert('已恢复默认服务器');
+            }
+        });
     }
     
     async loadAnnouncement() {
@@ -303,6 +352,11 @@ class PixelCS3D {
     onMouseDown(e) {
         if (this.buyMenuOpen || !this.isLocked) return;
         if (e.button === 0) {
+            // 观战模式下，左键切换观战目标
+            if (this.isSpectating) {
+                this.switchSpectatorTarget();
+                return;
+            }
             // 鼠标左键下包支持 - 当持有C4且在包点时，开始下包读条
             if (this.isDefuseMode && this.currentWeapon === 'c4' && this.hasC4 && !this.c4Planted) {
                 const site = this.isInBombSite();
@@ -372,36 +426,186 @@ class PixelCS3D {
     
     onGameModeChange(mode) {
         const targetKillsGroup = document.getElementById('targetKillsGroup');
+        const mapSelectGroup = document.getElementById('mapSelectGroup');
+        const customMapGroup = document.getElementById('customMapGroup');
         const mapSelect = document.getElementById('mapSelect');
         
-        const deathmatchMaps = [
-            { value: 'indoor', text: '室内竞技场 (Indoor)' },
-            { value: 'shipment', text: '运输船 (Shipment)' },
-            { value: 'office', text: '办公大楼 (Office)' },
-            { value: 'warehouse', text: '仓库 (Warehouse)' }
-        ];
-        
-        const defuseMaps = [{ value: 'dust2', text: '沙漠2 (Dust2)' }];
-        
-        mapSelect.innerHTML = '';
+        // 更新地图选择
+        updateMapSelect(mode === 'custom' ? 'deathmatch' : mode);
         
         if (mode === 'defuse') {
             targetKillsGroup.style.display = 'none';
-            defuseMaps.forEach(map => {
-                const option = document.createElement('option');
-                option.value = map.value;
-                option.textContent = map.text;
-                mapSelect.appendChild(option);
-            });
+            mapSelectGroup.style.display = 'block';
+            customMapGroup.style.display = 'none';
+        } else if (mode === 'custom') {
+            // 自定义模式：显示导入按钮，隐藏地图选择
+            mapSelectGroup.style.display = 'none';
+            customMapGroup.style.display = 'block';
+            // 默认隐藏击杀数，导入后根据地图模式决定
+            targetKillsGroup.style.display = 'none';
         } else {
             targetKillsGroup.style.display = 'block';
-            deathmatchMaps.forEach(map => {
-                const option = document.createElement('option');
-                option.value = map.value;
-                option.textContent = map.text;
-                mapSelect.appendChild(option);
-            });
+            mapSelectGroup.style.display = 'block';
+            customMapGroup.style.display = 'none';
         }
+    }
+    
+    // 初始化自定义地图导入
+    initCustomMapImport() {
+        const fileInput = document.getElementById('customMapFile');
+        const importBtn = document.getElementById('importMapBtn');
+        
+        if (!fileInput || !importBtn) return;
+        
+        importBtn.addEventListener('click', () => fileInput.click());
+        
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    const mapData = JSON.parse(event.target.result);
+                    const validationResult = this.validateCustomMap(mapData);
+                    if (!validationResult.valid) {
+                        alert('地图文件格式错误: ' + validationResult.error);
+                        fileInput.value = '';
+                        document.getElementById('customMapName').textContent = '未选择文件';
+                        return;
+                    }
+                    this.loadCustomMap(mapData);
+                    document.getElementById('customMapName').textContent = file.name;
+                } catch (err) {
+                    alert('地图文件解析失败: JSON格式错误');
+                    fileInput.value = '';
+                    document.getElementById('customMapName').textContent = '未选择文件';
+                    console.error('地图加载失败:', err);
+                }
+            };
+            reader.readAsText(file);
+        });
+    }
+    
+    // 校验自定义地图格式
+    validateCustomMap(mapData) {
+        // 检查必要字段
+        if (!mapData || typeof mapData !== 'object') {
+            return { valid: false, error: '无效的地图数据' };
+        }
+        
+        // 检查地图名称
+        if (!mapData.name || typeof mapData.name !== 'string' || mapData.name.trim() === '') {
+            return { valid: false, error: '缺少地图名称(name)' };
+        }
+        
+        // 检查地图大小
+        if (mapData.mapSize !== undefined) {
+            if (typeof mapData.mapSize !== 'number' || mapData.mapSize < 50 || mapData.mapSize > 1000) {
+                return { valid: false, error: '地图大小(mapSize)必须在50-1000之间' };
+            }
+        }
+        
+        // 检查游戏模式
+        if (mapData.gameMode !== undefined) {
+            if (!Array.isArray(mapData.gameMode)) {
+                return { valid: false, error: '游戏模式(gameMode)必须是数组' };
+            }
+            const validModes = ['deathmatch', 'defuse'];
+            for (const mode of mapData.gameMode) {
+                if (!validModes.includes(mode)) {
+                    return { valid: false, error: '无效的游戏模式: ' + mode };
+                }
+            }
+        }
+        
+        // 检查objects数组
+        if (mapData.objects !== undefined) {
+            if (!Array.isArray(mapData.objects)) {
+                return { valid: false, error: '物体列表(objects)必须是数组' };
+            }
+            for (let i = 0; i < mapData.objects.length; i++) {
+                const obj = mapData.objects[i];
+                if (!obj || typeof obj !== 'object') {
+                    return { valid: false, error: `物体[${i}]格式无效` };
+                }
+                // 检查必要的坐标和尺寸
+                if (typeof obj.x !== 'number' || typeof obj.z !== 'number') {
+                    return { valid: false, error: `物体[${i}]缺少有效坐标(x,z)` };
+                }
+            }
+        }
+        
+        // 检查爆破模式必要的包点和出生点
+        if (mapData.gameMode && mapData.gameMode.includes('defuse')) {
+            if (!mapData.bombSites || typeof mapData.bombSites !== 'object') {
+                return { valid: false, error: '爆破模式需要包点配置(bombSites)' };
+            }
+            if (!mapData.spawnPoints || typeof mapData.spawnPoints !== 'object') {
+                return { valid: false, error: '爆破模式需要出生点配置(spawnPoints)' };
+            }
+        }
+        
+        return { valid: true };
+    }
+    
+    // 加载自定义地图
+    loadCustomMap(mapData) {
+        this.customMapData = mapData;
+        
+        // 根据地图的游戏模式显示/隐藏击杀数选择
+        const targetKillsGroup = document.getElementById('targetKillsGroup');
+        const gameMode = mapData.gameMode || ['deathmatch'];
+        
+        // 如果是爆破模式
+        if (gameMode.includes('defuse')) {
+            this.selectedGameMode = 'defuse';
+            targetKillsGroup.style.display = 'none';
+        } else {
+            this.selectedGameMode = 'deathmatch';
+            targetKillsGroup.style.display = 'block';
+        }
+        
+        // 动态注册地图配置
+        const mapId = mapData.name || 'custom_imported';
+        MapConfigs[mapId] = {
+            displayName: mapData.displayName || '自定义地图',
+            gameMode: gameMode,
+            floorColor1: mapData.floorColor1 || '#8b7355',
+            floorColor2: mapData.floorColor2 || '#7a6245',
+            wallColor1: mapData.wallColor1 || '#95a5a6',
+            wallColor2: mapData.wallColor2 || '#7f8c8d',
+            skyColor: parseInt(mapData.skyColor) || 0x6bb3d9,
+            mapSize: mapData.mapSize || 300,
+            obstacles: this.convertObjectsToObstacles(mapData.objects || []),
+            bombSites: mapData.bombSites || {},
+            spawnPoints: mapData.spawnPoints || {}
+        };
+        
+        this.selectedMap = mapId;
+        console.log('自定义地图已加载:', mapId, MapConfigs[mapId]);
+    }
+    
+    // 将编辑器对象转换为障碍物格式
+    convertObjectsToObstacles(objects) {
+        const obstacles = [];
+        objects.forEach(obj => {
+            if (obj.type === 'floor' || obj.type === 'bombsite_a' || obj.type === 'bombsite_b' || 
+                obj.type === 'spawn_ct' || obj.type === 'spawn_t') {
+                return; // 跳过地板和特殊点位
+            }
+            obstacles.push({
+                x: obj.x,
+                y: obj.y,
+                z: obj.z,
+                w: obj.w,
+                h: obj.h,
+                d: obj.d,
+                color: obj.color,
+                rotation: obj.rotation
+            });
+        });
+        return obstacles;
     }
     
     toggleBuyMenu() {
@@ -507,11 +711,11 @@ class PixelCS3D {
     
     updateTeamScores() {
         if (this.isDefuseMode) {
-            document.getElementById('ct-score').textContent = `CT: ${this.ctScore}`;
-            document.getElementById('t-score').textContent = `T: ${this.tScore}`;
+            document.getElementById('ct-score').textContent = `反恐精英: ${this.ctScore}`;
+            document.getElementById('t-score').textContent = `恐怖分子: ${this.tScore}`;
         } else {
-            document.getElementById('ct-score').textContent = `CT: ${this.ctKills}`;
-            document.getElementById('t-score').textContent = `T: ${this.tKills}`;
+            document.getElementById('ct-score').textContent = `反恐精英: ${this.ctKills}`;
+            document.getElementById('t-score').textContent = `恐怖分子: ${this.tKills}`;
         }
     }
     
@@ -520,14 +724,31 @@ class PixelCS3D {
         if (!this.isReloading) this.updateAmmoDisplay();
         document.getElementById('score').textContent = `K: ${player.kills} / D: ${player.deaths}`;
         if (!player.is_alive && !this.gameOver) {
-            document.getElementById('death-screen').style.display = 'block';
-            document.getElementById('game').classList.add('dead-effect');
-            document.getElementById('death-overlay').classList.add('active');
             if (!this.isDefuseMode) {
+                // 团队竞技模式：显示死亡界面
+                document.getElementById('death-screen').style.display = 'block';
+                document.getElementById('game').classList.add('dead-effect');
+                document.getElementById('death-overlay').classList.add('active');
                 document.getElementById('respawn-info').innerHTML = '<span id="respawn-countdown">3</span> 秒后自动复活';
                 this.startRespawnTimer();
             } else {
-                document.getElementById('respawn-info').textContent = '等待下回合复活';
+                // 爆破模式死亡后自动进入观战模式
+                if (!this.isSpectating) {
+                    const aliveTeammates = this.getAliveTeammates();
+                    if (aliveTeammates.length > 0) {
+                        // 有存活队友，进入观战模式，不显示死亡界面
+                        document.getElementById('death-screen').style.display = 'none';
+                        document.getElementById('game').classList.remove('dead-effect');
+                        document.getElementById('death-overlay').classList.remove('active');
+                        this.startSpectating();
+                    } else {
+                        // 没有存活队友，显示等待复活
+                        document.getElementById('death-screen').style.display = 'block';
+                        document.getElementById('game').classList.add('dead-effect');
+                        document.getElementById('death-overlay').classList.add('active');
+                        document.getElementById('respawn-info').textContent = '等待下回合复活';
+                    }
+                }
             }
         }
     }
@@ -651,8 +872,8 @@ class PixelCS3D {
         
         let winnerText;
         if (winner === 'draw') winnerText = '平局!';
-        else if (winner === 'ct') winnerText = '反恐精英 (CT) 获胜!';
-        else winnerText = '恐怖分子 (T) 获胜!';
+        else if (winner === 'ct') winnerText = '反恐精英获胜!';
+        else winnerText = '恐怖分子获胜!';
         
         let reasonText = '';
         if (reason === 'time') reasonText = ' (时间结束)';
@@ -661,9 +882,9 @@ class PixelCS3D {
         document.getElementById('winner-text').textContent = winnerText + reasonText;
         
         if (this.isDefuseMode) {
-            document.getElementById('final-score').textContent = `最终比分 - CT: ${ctKills} 回合 | T: ${tKills} 回合`;
+            document.getElementById('final-score').textContent = `最终比分 - 反恐精英: ${ctKills} 回合 | 恐怖分子: ${tKills} 回合`;
         } else {
-            document.getElementById('final-score').textContent = `最终比分 - CT: ${ctKills} | T: ${tKills}`;
+            document.getElementById('final-score').textContent = `最终比分 - 反恐精英: ${ctKills} | 恐怖分子: ${tKills}`;
         }
         document.exitPointerLock();
     }
@@ -863,14 +1084,20 @@ class PixelCS3D {
         
         this.recoilAccumulator += currentRecoil;
         this.crosshairOffset = Math.min(this.recoilAccumulator * 1.5, 0.6);
-        this.gunRecoil = 0.8 + (config.recoil * 3);
-        this.screenShake = 0.03 + (config.recoil * 0.15);
+        this.gunRecoil = 0.5 + (config.recoil * 2);
+        this.screenShake = 0.02 + (config.recoil * 0.1);
         
+        // 后坐力算法：使用相对于当前视角的后坐力，不依赖地图坐标
+        // 垂直后坐力（向上）- 直接增加pitch，这在任何方向都是一致的
         const pitchRecoil = config.recoil * 0.008 * (1 + Math.min(this.shotsFired * 0.1, 0.5));
-        const yawRecoil = (Math.random() - 0.5) * config.recoil * 0.003;
+        // 水平后坐力（随机左右）- 直接增加yaw，这在任何方向都是一致的
+        const yawRecoil = (Math.random() - 0.5) * config.recoil * 0.02;
+        
+        // 直接应用后坐力到视角角度（pitch和yaw是相对于玩家自身的，不是世界坐标）
         this.pitch += pitchRecoil;
         this.yaw += yawRecoil;
         this.pitch = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, this.pitch));
+        this.camera.rotation.order = 'YXZ';
         this.camera.rotation.x = this.pitch;
         this.camera.rotation.y = this.yaw;
         
@@ -927,99 +1154,159 @@ class PixelCS3D {
         const direction = new THREE.Vector3();
         this.camera.getWorldDirection(direction);
         const start = this.camera.position.clone();
+        
+        // 发送手雷投掷信息到服务器
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            this.ws.send(JSON.stringify({
+                action: 'throw_grenade',
+                start: { x: start.x, y: start.y, z: start.z },
+                direction: { x: direction.x, y: direction.y, z: direction.z }
+            }));
+        }
+        
+        // 本地创建手雷
+        this.createLocalGrenade(start, direction);
+        
+        this.updateAmmoDisplay();
+        // 投掷后立即切换武器，不再延迟
+        if (this.grenadeCount <= 0) {
+            this.switchToSlot(1);
+        } else {
+            // 还有手雷时也快速切换到其他武器
+            this.switchToSlot(1);
+        }
+    }
+    
+    // 创建本地手雷（自己投掷或接收到其他玩家投掷）
+    createLocalGrenade(start, direction, isRemote = false) {
         const grenadeGeom = new THREE.SphereGeometry(0.3, 8, 8);
         const grenadeMat = new THREE.MeshLambertMaterial({ color: 0x2d4a2d });
         const grenade = new THREE.Mesh(grenadeGeom, grenadeMat);
         grenade.position.copy(start);
         this.scene.add(grenade);
         
-        let velocity = direction.clone().multiplyScalar(1.5);
-        velocity.y += 0.3;
-        let bounces = 0;
-        const walls = this.walls;
-        const grenadeRadius = 0.3;
+        // 使用固定的物理参数，不依赖帧率
+        const initialSpeed = 85; // 单位/秒，进一步增加投掷距离
+        let velocity = new THREE.Vector3(direction.x, direction.y, direction.z).normalize().multiplyScalar(initialSpeed);
+        velocity.y += 15; // 向上的初速度，增加抛物线高度
+        const gravity = 55; // 重力加速度，稍微降低让手雷飞得更远
+        const friction = 0.7; // 摩擦系数
+        const bounceFactor = 0.5; // 反弹系数
         
-        const checkWallCollision = (pos, vel) => {
+        let bounces = 0;
+        let lastTime = performance.now();
+        const walls = this.walls;
+        const grenadeRadius = 0.5;
+        
+        // 如果是远程手雷，播放投掷音效
+        if (isRemote) {
+            this.audio.playGrenadeThrowSound();
+        }
+        
+        const checkWallCollision = (currentPos, nextPos, vel) => {
+            let collided = false;
+            
             for (const wall of walls) {
                 const wx = wall.x, wz = wall.z, ww = wall.w, wd = wall.d;
                 const wallHeight = wall.h || 20;
                 
-                // 检查是否在墙体高度范围内
-                if (pos.y > wallHeight) continue;
+                if (currentPos.y > wallHeight + grenadeRadius) continue;
                 
-                // 计算到墙体的最近点
-                const closestX = Math.max(wx, Math.min(pos.x, wx + ww));
-                const closestZ = Math.max(wz, Math.min(pos.z, wz + wd));
-                const distX = pos.x - closestX;
-                const distZ = pos.z - closestZ;
-                const dist = Math.sqrt(distX * distX + distZ * distZ);
+                const minX = wx - grenadeRadius;
+                const maxX = wx + ww + grenadeRadius;
+                const minZ = wz - grenadeRadius;
+                const maxZ = wz + wd + grenadeRadius;
                 
-                if (dist < grenadeRadius) {
-                    // 发生碰撞，计算反弹
-                    const isHitX = Math.abs(distX) > Math.abs(distZ);
-                    if (isHitX) {
-                        vel.x *= -0.5; // 反弹并减速
-                        pos.x = closestX + (distX > 0 ? grenadeRadius : -grenadeRadius);
+                if (nextPos.x >= minX && nextPos.x <= maxX && 
+                    nextPos.z >= minZ && nextPos.z <= maxZ &&
+                    nextPos.y <= wallHeight + grenadeRadius) {
+                    
+                    const distToLeft = nextPos.x - minX;
+                    const distToRight = maxX - nextPos.x;
+                    const distToFront = nextPos.z - minZ;
+                    const distToBack = maxZ - nextPos.z;
+                    
+                    const minDist = Math.min(distToLeft, distToRight, distToFront, distToBack);
+                    
+                    if (minDist === distToLeft || minDist === distToRight) {
+                        vel.x *= -bounceFactor;
+                        if (minDist === distToLeft) {
+                            nextPos.x = minX - 0.01;
+                        } else {
+                            nextPos.x = maxX + 0.01;
+                        }
                     } else {
-                        vel.z *= -0.5;
-                        pos.z = closestZ + (distZ > 0 ? grenadeRadius : -grenadeRadius);
+                        vel.z *= -bounceFactor;
+                        if (minDist === distToFront) {
+                            nextPos.z = minZ - 0.01;
+                        } else {
+                            nextPos.z = maxZ + 0.01;
+                        }
                     }
-                    vel.x *= 0.7;
-                    vel.z *= 0.7;
-                    return true;
+                    
+                    vel.x *= friction;
+                    vel.z *= friction;
+                    collided = true;
+                    break;
                 }
             }
-            return false;
+            return collided;
         };
         
         const animateGrenade = () => {
-            velocity.y -= 0.02; // 重力
+            const now = performance.now();
+            const deltaTime = Math.min((now - lastTime) / 1000, 0.05); // 限制最大deltaTime防止跳帧
+            lastTime = now;
             
-            // 预测下一帧位置
-            const nextPos = grenade.position.clone().add(velocity);
+            // 应用重力
+            velocity.y -= gravity * deltaTime;
+            
+            // 计算下一帧位置
+            const currentPos = grenade.position.clone();
+            const nextPos = currentPos.clone().add(velocity.clone().multiplyScalar(deltaTime));
             
             // 检查墙体碰撞
-            checkWallCollision(nextPos, velocity);
+            checkWallCollision(currentPos, nextPos, velocity);
             
             // 更新位置
-            grenade.position.add(velocity);
+            grenade.position.copy(nextPos);
             
             // 地面碰撞
             if (grenade.position.y < 0.5) {
                 grenade.position.y = 0.5;
-                velocity.y *= -0.5;
-                velocity.x *= 0.7;
-                velocity.z *= 0.7;
+                velocity.y *= -bounceFactor;
+                velocity.x *= friction;
+                velocity.z *= friction;
                 bounces++;
             }
             
             // 边界检查
-            const mapBoundary = this.selectedMap === 'dust2' ? 295 : 115;
+            const grenadeMapConfig = MapConfigs[this.selectedMap];
+            const grenadeMapSize = (grenadeMapConfig && grenadeMapConfig.mapSize) || 125;
+            const mapBoundary = grenadeMapSize - 5;
             if (Math.abs(grenade.position.x) > mapBoundary) {
-                velocity.x *= -0.5;
+                velocity.x *= -bounceFactor;
                 grenade.position.x = Math.sign(grenade.position.x) * mapBoundary;
             }
             if (Math.abs(grenade.position.z) > mapBoundary) {
-                velocity.z *= -0.5;
+                velocity.z *= -bounceFactor;
                 grenade.position.z = Math.sign(grenade.position.z) * mapBoundary;
             }
             
-            if (bounces < 5 && velocity.length() > 0.03) {
+            // 继续动画或爆炸
+            if (bounces < 5 && velocity.length() > 1) {
                 requestAnimationFrame(animateGrenade);
             } else {
                 setTimeout(() => {
-                    this.createExplosion(grenade.position);
+                    this.createExplosion(grenade.position, isRemote);
                     this.scene.remove(grenade);
                 }, 1500);
             }
         };
         animateGrenade();
-        
-        this.updateAmmoDisplay();
-        if (this.grenadeCount <= 0) setTimeout(() => this.switchToSlot(1), 500);
     }
     
-    createExplosion(position) {
+    createExplosion(position, isRemote = false) {
         this.audio.playExplosionSound();
         
         const explosionGeom = new THREE.SphereGeometry(2, 16, 16);
@@ -1092,11 +1379,14 @@ class PixelCS3D {
         };
         animateExplosion();
         
-        for (const [playerId, mesh] of Object.entries(this.playerMeshes)) {
-            if (playerId === this.playerId) continue;
-            const dist = mesh.position.distanceTo(position);
-            if (dist < 10 && this.ws && this.ws.readyState === WebSocket.OPEN) {
-                this.ws.send(JSON.stringify({ action: 'grenade_hit', target_id: playerId, distance: dist }));
+        // 只有自己投掷的手雷才检测伤害
+        if (!isRemote) {
+            for (const [playerId, mesh] of Object.entries(this.playerMeshes)) {
+                if (playerId === this.playerId) continue;
+                const dist = mesh.position.distanceTo(position);
+                if (dist < 10 && this.ws && this.ws.readyState === WebSocket.OPEN) {
+                    this.ws.send(JSON.stringify({ action: 'grenade_hit', target_id: playerId, distance: dist }));
+                }
             }
         }
     }
@@ -1114,20 +1404,45 @@ class PixelCS3D {
             spreadX = (Math.random() - 0.5) * noScopeSpread;
             spreadY = (Math.random() - 0.5) * noScopeSpread;
         } else if (this.shotsFired > 2) {
-            const spreadFactor = Math.min((this.shotsFired - 2) / 8, 1);
-            const baseSpread = (config.spread || 0.02) * spreadFactor;
-            const recoilSpread = this.recoilAccumulator * 0.03 * spreadFactor;
-            const totalSpread = baseSpread + recoilSpread;
-            spreadX = (Math.random() - 0.5) * totalSpread;
-            spreadY = Math.random() * totalSpread * 0.8 + this.recoilAccumulator * 0.012;
+            // 连发10发后，散布固定在一个最大范围内随机
+            const isMaxSpread = this.shotsFired >= 10;
+            
+            if (isMaxSpread) {
+                // 10发后固定最大散布范围
+                const maxSpread = (config.spread || 0.02) + 0.08;
+                spreadX = (Math.random() - 0.5) * maxSpread;
+                spreadY = (Math.random() - 0.5) * maxSpread * 0.8 + 0.04;
+            } else {
+                // 2-10发之间逐渐增加散布
+                const spreadFactor = Math.min((this.shotsFired - 2) / 8, 1);
+                const baseSpread = (config.spread || 0.02) * spreadFactor;
+                const recoilSpread = this.recoilAccumulator * 0.03 * spreadFactor;
+                const totalSpread = baseSpread + recoilSpread;
+                spreadX = (Math.random() - 0.5) * totalSpread;
+                spreadY = Math.random() * totalSpread * 0.8 + this.recoilAccumulator * 0.012;
+            }
         }
         
         const origin = this.camera.position.clone();
         const direction = new THREE.Vector3();
         this.camera.getWorldDirection(direction);
-        direction.x += spreadX;
-        direction.y += spreadY;
-        direction.normalize();
+        
+        // 将散布应用到相机的本地坐标系，而不是世界坐标系
+        // 这样无论玩家朝哪个方向，散布效果都是一致的
+        if (spreadX !== 0 || spreadY !== 0) {
+            // 获取相机的右向量和上向量
+            const right = new THREE.Vector3();
+            const up = new THREE.Vector3();
+            this.camera.getWorldDirection(direction);
+            right.crossVectors(direction, this.camera.up).normalize();
+            up.crossVectors(right, direction).normalize();
+            
+            // 在本地坐标系中应用散布
+            direction.add(right.multiplyScalar(spreadX));
+            direction.add(up.multiplyScalar(spreadY));
+            direction.normalize();
+        }
+        
         raycaster.set(origin, direction);
         
         let endPoint = origin.clone().add(direction.clone().multiplyScalar(100));
@@ -1307,9 +1622,31 @@ class PixelCS3D {
     }
 
     // ==================== 游戏初始化 ====================
+    // 校验玩家名称和房间号
+    validateInput(name, roomId) {
+        // 名称长度限制：2-8个字符
+        if (name.length < 2 || name.length > 8) {
+            this.showMenuError('玩家名称必须在2-8个字符之间');
+            return false;
+        }
+        // 房间号固定8个字符
+        if (roomId.length !== 8) {
+            this.showMenuError('房间号必须是8个字符');
+            return false;
+        }
+        // 只允许字母数字
+        if (!/^[a-zA-Z0-9]+$/.test(roomId)) {
+            this.showMenuError('房间号只能包含字母和数字');
+            return false;
+        }
+        return true;
+    }
+    
     joinGame() {
-        const name = document.getElementById('playerName').value || 'Player';
-        const roomId = document.getElementById('roomId').value || 'default';
+        const name = document.getElementById('playerName').value.trim();
+        const roomId = document.getElementById('roomId').value.trim();
+        
+        if (!this.validateInput(name, roomId)) return;
         
         this.checkRoomInfo(roomId).then(roomInfo => {
             if (roomInfo.exists) {
@@ -1317,6 +1654,12 @@ class PixelCS3D {
                 this.selectedMap = roomInfo.map || 'dust2';
                 this.selectedGameMode = roomInfo.game_mode || 'deathmatch';
                 this.targetKills = roomInfo.target_kills || 20;
+                
+                // 如果是自定义地图房间，提示用户
+                if (roomInfo.has_custom_map) {
+                    console.log('加入自定义地图房间，地图将在连接后同步');
+                }
+                
                 this.startGame(name, roomId, false);
             } else {
                 this.showMenuError('房间不存在，请创建房间或输入正确的房间号');
@@ -1341,7 +1684,8 @@ class PixelCS3D {
                             exists: data.exists,
                             map: data.map,
                             game_mode: data.game_mode,
-                            target_kills: data.target_kills
+                            target_kills: data.target_kills,
+                            has_custom_map: data.has_custom_map || false
                         });
                     }
                 } catch (e) { checkWs.close(); reject(e); }
@@ -1366,12 +1710,33 @@ class PixelCS3D {
     }
     
     createGame() {
-        const name = document.getElementById('playerName').value || 'Player';
-        const roomId = document.getElementById('roomId').value || 'room_' + Math.random().toString(36).substr(2, 6);
-        document.getElementById('roomId').value = roomId;
+        const name = document.getElementById('playerName').value.trim();
+        let roomId = document.getElementById('roomId').value.trim();
+        
+        // 如果没有输入房间号，自动生成8位随机房间号
+        if (!roomId) {
+            roomId = Math.random().toString(36).substr(2, 8);
+            document.getElementById('roomId').value = roomId;
+        }
+        
+        if (!this.validateInput(name, roomId)) return;
+        
         this.targetKills = parseInt(document.getElementById('targetKills').value) || 20;
-        this.selectedMap = document.getElementById('mapSelect').value || 'dust2';
-        this.selectedGameMode = document.getElementById('gameMode').value || 'deathmatch';
+        
+        const gameMode = document.getElementById('gameMode').value || 'deathmatch';
+        
+        // 自定义模式处理
+        if (gameMode === 'custom') {
+            if (!this.customMapData) {
+                alert('请先导入地图文件');
+                return;
+            }
+            // selectedMap 和 selectedGameMode 已在 loadCustomMap 中设置
+        } else {
+            this.selectedMap = document.getElementById('mapSelect').value || 'dust2';
+            this.selectedGameMode = gameMode;
+        }
+        
         this.startGame(name, roomId, true);
     }
     
@@ -1394,6 +1759,10 @@ class PixelCS3D {
             pixelMusic.stop();
         }
         document.getElementById('music-control').style.display = 'none';
+        
+        // 隐藏地图编辑器入口
+        const editorLink = document.getElementById('editor-link');
+        if (editorLink) editorLink.style.display = 'none';
         
         // 停止背景动画
         if (typeof pixelBg !== 'undefined' && pixelBg) {
@@ -1425,8 +1794,9 @@ class PixelCS3D {
     initThree() {
         this.scene = new THREE.Scene();
         this.scene.background = new THREE.Color(0x6bb3d9);
-        this.scene.fog = new THREE.Fog(0x6bb3d9, 100, 500);
-        this.camera = new THREE.PerspectiveCamera(this.normalFOV, window.innerWidth / window.innerHeight, 0.1, 1000);
+        // 移除迷雾效果
+        this.scene.fog = null;
+        this.camera = new THREE.PerspectiveCamera(this.normalFOV, window.innerWidth / window.innerHeight, 0.1, 2000);
         this.camera.position.set(0, this.standingHeight, 0);
         
         this.renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
@@ -1477,6 +1847,22 @@ class PixelCS3D {
                 joinData.map = this.selectedMap;
                 joinData.game_mode = this.selectedGameMode;
                 joinData.is_creating = true;
+                
+                // 发送地图配置（包点、出生点、地图大小）
+                const mapConfig = MapConfigs[this.selectedMap];
+                if (mapConfig) {
+                    joinData.map_size = mapConfig.mapSize || 125;
+                    if (mapConfig.bombSites) {
+                        joinData.bomb_sites = mapConfig.bombSites;
+                    }
+                    if (mapConfig.spawnPoints) {
+                        joinData.spawn_points = mapConfig.spawnPoints;
+                    }
+                    // 如果是自定义地图，发送完整配置
+                    if (this.customMapData) {
+                        joinData.custom_map_config = this.customMapData;
+                    }
+                }
             }
             this.ws.send(JSON.stringify(joinData));
         };
@@ -1500,14 +1886,24 @@ class PixelCS3D {
                 this.fireRate = config.fireRate;
                 this.weaponRecoil = config.recoil;
                 if (data.target_kills) this.targetKills = data.target_kills;
-                // 只在地图不同时才重新加载地图，避免重复加载
-                if (data.map && this.selectedMap !== data.map) {
+                
+                // 如果服务器发送了自定义地图配置，先加载它
+                if (data.custom_map_config) {
+                    this.loadCustomMap(data.custom_map_config);
+                    // 自定义地图需要强制重新加载
+                    this.walls.forEach(wall => { if (wall.mesh) this.scene.remove(wall.mesh); });
+                    this.walls = [];
+                    const mapBuilder = new MapBuilder(this.scene);
+                    this.walls = mapBuilder.createMap(this.selectedMap);
+                    document.getElementById('map-name').textContent = MapConfigs[this.selectedMap]?.displayName || '自定义地图';
+                } else if (data.map && this.selectedMap !== data.map) {
+                    // 只在地图不同时才重新加载地图，避免重复加载
                     this.selectedMap = data.map;
                     this.walls.forEach(wall => { if (wall.mesh) this.scene.remove(wall.mesh); });
                     this.walls = [];
                     const mapBuilder = new MapBuilder(this.scene);
                     this.walls = mapBuilder.createMap(this.selectedMap);
-                    document.getElementById('map-name').textContent = MapNames[data.map] || '沙漠2';
+                    document.getElementById('map-name').textContent = MapNames[data.map] || MapConfigs[data.map]?.displayName || '自定义地图';
                 }
                 document.getElementById('target-kills').textContent = this.targetKills;
                 this.updateGunModel();
@@ -1566,6 +1962,7 @@ class PixelCS3D {
             case 'respawn':
                 if (data.player_id === this.playerId) {
                     this.clearRespawnTimer();
+                    this.stopSpectating();
                     document.getElementById('death-screen').style.display = 'none';
                     document.getElementById('game').classList.remove('dead-effect');
                     document.getElementById('death-overlay').classList.remove('active');
@@ -1594,6 +1991,10 @@ class PixelCS3D {
                 alert('房间不存在，请创建房间或输入正确的房间号');
                 this.backToMenu();
                 break;
+            case 'join_error':
+                alert(data.message || '加入房间失败');
+                this.backToMenu();
+                break;
             case 'bullet':
                 if (data.bullet && data.bullet.owner_id !== this.playerId) {
                     const shooter = this.players[data.bullet.owner_id];
@@ -1605,6 +2006,14 @@ class PixelCS3D {
                         const volume = Math.max(0.1, 1 - distance / maxDistance) * 0.6;
                         this.audio.playRemoteGunSound(data.bullet.weapon || shooter.weapon || 'ak47', volume);
                     }
+                }
+                break;
+            case 'grenade_thrown':
+                // 其他玩家投掷手雷
+                if (data.owner_id !== this.playerId) {
+                    const start = new THREE.Vector3(data.start.x, data.start.y, data.start.z);
+                    const direction = new THREE.Vector3(data.direction.x, data.direction.y, data.direction.z);
+                    this.createLocalGrenade(start, direction, true);
                 }
                 break;
             case 'c4_planted': this.onC4Planted(data); break;
@@ -1671,59 +2080,91 @@ class PixelCS3D {
         if (this.c4Model) this.scene.remove(this.c4Model);
         const c4Group = new THREE.Group();
         
-        // C4主体
+        // C4主体 - 使用透明材质避免遮挡玩家
         const bodyGeom = new THREE.BoxGeometry(3, 1.5, 2);
-        const bodyMat = new THREE.MeshLambertMaterial({ color: 0x2d2d2d });
+        const bodyMat = new THREE.MeshLambertMaterial({ 
+            color: 0x2d2d2d,
+            transparent: true,
+            opacity: 0.95,
+            depthWrite: false
+        });
         const body = new THREE.Mesh(bodyGeom, bodyMat);
+        body.renderOrder = 1;
         c4Group.add(body);
         
         // 红色指示灯
         const lightGeom = new THREE.SphereGeometry(0.3, 8, 8);
-        const lightMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+        const lightMat = new THREE.MeshBasicMaterial({ 
+            color: 0xff0000,
+            transparent: true,
+            opacity: 1,
+            depthWrite: false
+        });
         const light = new THREE.Mesh(lightGeom, lightMat);
         light.position.set(0, 0.8, 0);
+        light.renderOrder = 2;
         c4Group.add(light);
         this.c4Light = light;
         
         // 线缆
         const wireGeom = new THREE.CylinderGeometry(0.1, 0.1, 1, 8);
-        const wireMat = new THREE.MeshLambertMaterial({ color: 0x333333 });
+        const wireMat = new THREE.MeshLambertMaterial({ 
+            color: 0x333333,
+            transparent: true,
+            opacity: 0.95,
+            depthWrite: false
+        });
         const wire = new THREE.Mesh(wireGeom, wireMat);
         wire.position.set(1, 0, 0);
         wire.rotation.z = Math.PI / 4;
+        wire.renderOrder = 1;
         c4Group.add(wire);
         
         // 数字显示屏
         const screenGeom = new THREE.BoxGeometry(1.2, 0.5, 0.1);
-        const screenMat = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+        const screenMat = new THREE.MeshBasicMaterial({ 
+            color: 0x00ff00,
+            transparent: true,
+            opacity: 1,
+            depthWrite: false
+        });
         const screen = new THREE.Mesh(screenGeom, screenMat);
         screen.position.set(0, 0.3, 1.05);
+        screen.renderOrder = 2;
         c4Group.add(screen);
         
-        // 闪光特效 - 环形光晕
+        // 闪光特效 - 环形光晕（不遮挡其他物体）
         const glowGeom = new THREE.RingGeometry(2, 4, 32);
         const glowMat = new THREE.MeshBasicMaterial({ 
             color: 0xff0000, 
             transparent: true, 
             opacity: 0.3,
-            side: THREE.DoubleSide
+            side: THREE.DoubleSide,
+            depthWrite: false,
+            depthTest: false
         });
         const glow = new THREE.Mesh(glowGeom, glowMat);
         glow.position.set(0, 0.1, 0);
         glow.rotation.x = -Math.PI / 2;
+        glow.renderOrder = 999;
+        glow.raycast = () => {};
         c4Group.add(glow);
         this.c4Glow = glow;
         
-        // 垂直光柱
+        // 垂直光柱 - 设置为不遮挡射线检测
         const beamGeom = new THREE.CylinderGeometry(0.5, 1.5, 8, 16, 1, true);
         const beamMat = new THREE.MeshBasicMaterial({ 
             color: 0xff3300, 
             transparent: true, 
             opacity: 0.15,
-            side: THREE.DoubleSide
+            side: THREE.DoubleSide,
+            depthWrite: false,
+            depthTest: false
         });
         const beam = new THREE.Mesh(beamGeom, beamMat);
         beam.position.set(0, 4, 0);
+        beam.renderOrder = 999;
+        beam.raycast = () => {};
         c4Group.add(beam);
         this.c4Beam = beam;
         
@@ -1792,12 +2233,12 @@ class PixelCS3D {
         const roundReason = document.getElementById('round-reason');
         const roundScore = document.getElementById('round-score');
         
-        if (data.winner === 'ct') { roundWinner.textContent = 'CT 获胜'; roundWinner.className = 'ct-win'; }
-        else { roundWinner.textContent = 'T 获胜'; roundWinner.className = 't-win'; }
+        if (data.winner === 'ct') { roundWinner.textContent = '反恐精英获胜'; roundWinner.className = 'ct-win'; }
+        else { roundWinner.textContent = '恐怖分子获胜'; roundWinner.className = 't-win'; }
         
-        const reasons = { 'bomb_exploded': 'C4已爆炸', 'bomb_defused': 'C4已拆除', 't_eliminated': 'T方全灭', 'ct_eliminated': 'CT方全灭', 'time_up': '时间结束' };
+        const reasons = { 'bomb_exploded': 'C4已爆炸', 'bomb_defused': 'C4已拆除', 't_eliminated': '恐怖分子全灭', 'ct_eliminated': '反恐精英全灭', 'time_up': '时间结束' };
         roundReason.textContent = reasons[data.reason] || data.reason;
-        roundScore.textContent = `CT ${data.ct_score} - ${data.t_score} T`;
+        roundScore.textContent = `反恐精英 ${data.ct_score} - ${data.t_score} 恐怖分子`;
         this.ctScore = data.ct_score;
         this.tScore = data.t_score;
         this.updateDefuseScores();
@@ -1830,6 +2271,9 @@ class PixelCS3D {
         document.getElementById('game').classList.remove('dead-effect');
         document.getElementById('death-overlay').classList.remove('active');
         this.resetDeathAnimation();
+        
+        // 退出观战模式
+        this.stopSpectating();
         
         // 更新玩家位置到出生点
         if (data.players && data.players[this.playerId]) {
@@ -1896,8 +2340,152 @@ class PixelCS3D {
     }
     
     updateDefuseScores() {
-        document.getElementById('ct-score').textContent = `CT: ${this.ctScore}`;
-        document.getElementById('t-score').textContent = `T: ${this.tScore}`;
+        document.getElementById('ct-score').textContent = `反恐精英: ${this.ctScore}`;
+        document.getElementById('t-score').textContent = `恐怖分子: ${this.tScore}`;
+    }
+    
+    // ==================== 观战模式 ====================
+    startSpectating() {
+        if (!this.isDefuseMode) return;
+        
+        // 获取存活的队友列表
+        this.spectatorTargets = this.getAliveTeammates();
+        
+        if (this.spectatorTargets.length === 0) {
+            // 没有存活的队友
+            this.isSpectating = false;
+            this.spectatingPlayerId = null;
+            this.hideSpectatorUI();
+            return;
+        }
+        
+        this.isSpectating = true;
+        this.spectatingPlayerId = this.spectatorTargets[0];
+        this.showSpectatorUI();
+        this.updateSpectatorView();
+    }
+    
+    getAliveTeammates() {
+        const teammates = [];
+        for (const [id, player] of Object.entries(this.players)) {
+            if (id !== this.playerId && player.team === this.selectedTeam && player.is_alive) {
+                teammates.push(id);
+            }
+        }
+        return teammates;
+    }
+    
+    switchSpectatorTarget() {
+        if (!this.isSpectating) return;
+        
+        // 更新存活队友列表
+        this.spectatorTargets = this.getAliveTeammates();
+        
+        if (this.spectatorTargets.length === 0) {
+            this.stopSpectating();
+            return;
+        }
+        
+        // 找到当前观战目标的索引
+        const currentIndex = this.spectatorTargets.indexOf(this.spectatingPlayerId);
+        // 切换到下一个
+        const nextIndex = (currentIndex + 1) % this.spectatorTargets.length;
+        this.spectatingPlayerId = this.spectatorTargets[nextIndex];
+        this.updateSpectatorView();
+    }
+    
+    updateSpectatorView() {
+        if (!this.isSpectating || !this.spectatingPlayerId) return;
+        
+        const target = this.players[this.spectatingPlayerId];
+        if (!target || !target.is_alive) {
+            // 目标已死亡，切换到下一个
+            this.spectatorTargets = this.getAliveTeammates();
+            if (this.spectatorTargets.length > 0) {
+                this.spectatingPlayerId = this.spectatorTargets[0];
+                this.updateSpectatorView();
+            } else {
+                this.stopSpectating();
+            }
+            return;
+        }
+        
+        // 更新观战UI显示
+        const spectatorName = document.getElementById('spectator-name');
+        if (spectatorName) {
+            spectatorName.textContent = target.name || '队友';
+        }
+        
+        // 更新武器模型
+        this.updateSpectatorWeapon();
+    }
+    
+    stopSpectating() {
+        this.isSpectating = false;
+        this.spectatingPlayerId = null;
+        this.spectatorTargets = [];
+        this.hideSpectatorUI();
+    }
+    
+    showSpectatorUI() {
+        const spectatorUI = document.getElementById('spectator-ui');
+        if (spectatorUI) {
+            spectatorUI.style.display = 'block';
+        }
+        // 观战时显示被观战者的武器模型
+        this.updateSpectatorWeapon();
+    }
+    
+    updateSpectatorWeapon() {
+        if (!this.isSpectating || !this.spectatingPlayerId) return;
+        
+        const target = this.players[this.spectatingPlayerId];
+        if (!target) return;
+        
+        // 更新为被观战者的武器
+        const targetWeapon = target.weapon || 'ak47';
+        if (this.gunModel) {
+            this.camera.remove(this.gunModel);
+        }
+        this.weaponBuilder = new WeaponModelBuilder(target.team);
+        this.gunModel = this.weaponBuilder.createModel(targetWeapon);
+        this.gunBasePosition = this.gunModel.position.clone();
+        this.gunBaseRotation = this.gunModel.rotation.clone();
+        this.camera.add(this.gunModel);
+    }
+    
+    hideSpectatorUI() {
+        const spectatorUI = document.getElementById('spectator-ui');
+        if (spectatorUI) {
+            spectatorUI.style.display = 'none';
+        }
+        // 恢复自己的枪械模型
+        this.updateGunModel();
+    }
+    
+    updateSpectatorCamera() {
+        if (!this.isSpectating || !this.spectatingPlayerId) return;
+        
+        const target = this.players[this.spectatingPlayerId];
+        if (!target || !target.is_alive) {
+            this.switchSpectatorTarget();
+            return;
+        }
+        
+        // 直接使用玩家数据的位置（target.x是x坐标，target.y是z坐标）
+        const targetX = target.x;
+        const targetZ = target.y; // 注意：服务器的y是游戏中的z
+        const targetHeight = (target.height_offset || 0) + this.standingHeight;
+        
+        // 跟随目标位置
+        this.camera.position.x = targetX;
+        this.camera.position.z = targetZ;
+        this.camera.position.y = targetHeight;
+        
+        // 跟随目标视角
+        this.yaw = -target.angle + Math.PI / 2;
+        this.camera.rotation.y = this.yaw;
+        this.camera.rotation.x = 0; // 保持水平视角
     }
     
     showDefuseHint() {
@@ -2108,7 +2696,8 @@ class PixelCS3D {
                 document.getElementById('defuse-hint').style.display = 'none';
             }
             
-            if (state.defuse_progress !== undefined && state.defuse_progress > 0) {
+            // 只有拆包人自己才显示拆包读条
+            if (state.defuse_progress !== undefined && state.defuse_progress > 0 && state.defuser_id === this.playerId) {
                 document.getElementById('defuse-progress-container').style.display = 'block';
                 document.getElementById('defuse-progress-bar').style.setProperty('--progress', (state.defuse_progress * 100) + '%');
             } else if (!this.isDefusing) {
@@ -2255,7 +2844,11 @@ class PixelCS3D {
     // ==================== 游戏循环 ====================
     checkCollision(newX, newZ, checkHeight = null) {
         const playerRadius = 2.5;
-        const mapBoundary = this.selectedMap === 'dust2' ? 298 : 118;
+        // 动态获取地图边界
+        const mapConfig = MapConfigs[this.selectedMap];
+        const mapSize = (mapConfig && mapConfig.mapSize) || 125;
+        // 边界应该是地图大小，玩家可以走到边缘
+        const mapBoundary = mapSize;
         const playerHeight = checkHeight !== null ? checkHeight : this.camera.position.y;
         const maxJumpHeight = 20; // 允许跳跃到更高的障碍物上
         
@@ -2356,9 +2949,17 @@ class PixelCS3D {
             this.updateC4BeepSound();
         }
         
-        if (!this.playerId || this.gameOver) { this.updateGunAnimation(deltaMultiplier); return; }
+        if (!this.playerId || this.gameOver) { this.updateGunAnimation(deltaMultiplier); this.updateOtherPlayers(); return; }
         const player = this.players[this.playerId];
-        if (!player || !player.is_alive) { this.updateGunAnimation(deltaMultiplier); return; }
+        if (!player || !player.is_alive) {
+            // 观战模式下更新摄像机跟随
+            if (this.isSpectating) {
+                this.updateSpectatorCamera();
+            }
+            this.updateGunAnimation(deltaMultiplier);
+            this.updateOtherPlayers(); // 死亡时也要更新其他玩家的位置
+            return;
+        }
         
         const baseMoveSpeed = this.isCrouching ? 10 : 18;
         const moveSpeed = baseMoveSpeed * deltaTime;
@@ -2377,10 +2978,9 @@ class PixelCS3D {
             let newZ = this.camera.position.z + moveZ;
             const collision = this.checkCollision(newX, newZ);
             if (collision.blocked) {
+                // 使用碰撞检测返回的clampedX/Z，不需要额外的边界限制
                 newX = collision.clampedX + collision.pushX;
                 newZ = collision.clampedZ + collision.pushZ;
-                newX = Math.max(-118, Math.min(118, newX));
-                newZ = Math.max(-118, Math.min(118, newZ));
             }
             this.currentStandingHeight = collision.standingOnHeight || 0;
             this.camera.position.x = newX;
@@ -2443,9 +3043,9 @@ class PixelCS3D {
         
         if (this.gunRecoil > 0.005) {
             this.gunRecoil *= 0.88;
-            const recoilZ = this.gunRecoil * 0.15;
-            const recoilY = this.gunRecoil * 0.06;
-            const recoilRotX = this.gunRecoil * 0.25;
+            const recoilZ = this.gunRecoil * 0.1;
+            const recoilY = this.gunRecoil * 0.04;
+            const recoilRotX = this.gunRecoil * 0.15;
             this.gunModel.position.z += recoilZ;
             this.gunModel.position.y += recoilY;
             this.gunModel.rotation.x -= recoilRotX;

@@ -48,6 +48,35 @@ body {
     box-shadow: 4px 4px 0 #533483;
 }
 
+/* 地图编辑器入口按钮 */
+#editor-link {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    z-index: 1000;
+}
+
+.editor-btn {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 50px;
+    height: 50px;
+    background: rgba(15, 15, 35, 0.9);
+    border: 3px solid #4ade80;
+    color: #4ade80;
+    font-size: 24px;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 4px 4px 0 #22c55e;
+    text-decoration: none;
+}
+
+.editor-btn:hover {
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0 #22c55e;
+    background: rgba(74, 222, 128, 0.2);
+}
 .music-btn:hover {
     transform: translate(2px, 2px);
     box-shadow: 2px 2px 0 #533483;
@@ -71,18 +100,20 @@ body {
 
 .menu-wrapper {
     display: flex;
-    gap: 30px;
+    justify-content: space-between;
     align-items: stretch;
-    max-width: 1200px;
-    padding: 20px;
+    width: 100%;
+    max-width: 1400px;
+    padding: 20px 40px;
 }
 
 .info-card {
-    background: #0f0f23;
+    background: #0f0f2300;
     border: 4px solid #533483;
     padding: 25px;
     width: 280px;
     box-shadow: 6px 6px 0 #533483;
+    flex-shrink: 0;
 }
 
 .info-card h3 {
@@ -184,7 +215,7 @@ body {
 }
 
 .menu-container {
-    background: #0f0f23;
+    background: #0f0f23d4;
     border: 4px solid #e94560;
     padding: 40px;
     text-align: center;
@@ -300,6 +331,34 @@ body {
     transform: scale(1.02);
 }
 
+/* 服务器配置样式 */
+.server-config {
+    border-top: 1px dashed #533483;
+    padding-top: 15px;
+    margin-top: 15px;
+}
+
+.server-config label .optional {
+    color: #888;
+    font-size: 12px;
+}
+
+.server-input-group {
+    display: flex;
+    gap: 10px;
+}
+
+.server-input-group input {
+    flex: 1;
+}
+
+.server-hint {
+    display: block;
+    margin-top: 5px;
+    font-size: 11px;
+    color: #4ade80;
+}
+
 .pixel-btn {
     width: 100%;
     padding: 15px 30px;
@@ -311,6 +370,13 @@ body {
     cursor: pointer;
     margin-top: 15px;
     box-shadow: 4px 4px 0 #533483;
+}
+
+.pixel-btn.small {
+    width: auto;
+    padding: 8px 16px;
+    font-size: 14px;
+    margin-top: 0;
 }
 
 .pixel-btn:hover {
@@ -1245,4 +1311,41 @@ body {
 .defuse-mode #t-score {
     font-size: 24px;
     padding: 10px 20px;
+}
+
+/* ==================== 观战模式样式 ==================== */
+#spectator-ui {
+    position: fixed;
+    bottom: 120px;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    z-index: 200;
+}
+
+#spectator-info {
+    background: rgba(0, 0, 0, 0.8);
+    padding: 15px 30px;
+    border-radius: 8px;
+    border: 3px solid #00ccff;
+    margin-bottom: 10px;
+}
+
+#spectator-label {
+    color: #00ccff;
+    font-size: 16px;
+    margin-right: 15px;
+}
+
+#spectator-name {
+    color: #fff;
+    font-size: 20px;
+    font-weight: bold;
+    text-shadow: 0 0 10px #00ccff;
+}
+
+#spectator-hint {
+    color: #888;
+    font-size: 14px;
+    animation: hint-blink 1.5s infinite;
 }

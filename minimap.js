@@ -27,9 +27,15 @@ class Minimap {
         this.ctx = this.canvas.getContext('2d');
     }
     
+    // 获取当前地图大小
+    getMapSize() {
+        const mapConfig = MapConfigs[this.game.selectedMap];
+        return (mapConfig && mapConfig.mapSize) || 125;
+    }
+    
     // 世界坐标转小地图坐标（以地图中心为原点，固定北向上）
     worldToMinimap(worldX, worldZ) {
-        const mapSize = this.game.selectedMap === 'dust2' ? 300 : 125;
+        const mapSize = this.getMapSize();
         const centerOffset = this.size / 2;
         const scale = this.size / (mapSize * 2);
         
@@ -70,7 +76,7 @@ class Minimap {
         ctx.strokeStyle = 'rgba(139, 115, 85, 0.8)';
         ctx.lineWidth = 1;
         
-        const mapSize = this.game.selectedMap === 'dust2' ? 300 : 125;
+        const mapSize = this.getMapSize();
         const scale = this.size / (mapSize * 2);
         
         if (mapConfig.obstacles) {

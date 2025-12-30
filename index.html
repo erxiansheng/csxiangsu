@@ -13,6 +13,11 @@
         <canvas id="pixel-canvas"></canvas>
     </div>
     
+    <!-- 地图编辑器入口 -->
+    <div id="editor-link">
+        <a href="map-editor/index.html" class="editor-btn" title="地图编辑器">🗺️</a>
+    </div>
+    
     <!-- 背景音乐控制 -->
     <div id="music-control">
         <button id="music-toggle" class="music-btn">🔊</button>
@@ -56,63 +61,77 @@
             
             <!-- 中间：主菜单 -->
             <div class="menu-container">
-            <h1 class="pixel-title">CS 1.6</h1>
-            <h2 class="pixel-subtitle">3D 像素版</h2>
-            
-            <div class="tab-buttons">
-                <button type="button" id="tabJoin" class="tab-btn active">加入房间</button>
-                <button type="button" id="tabCreate" class="tab-btn">创建房间</button>
-            </div>
-            
-            <div class="input-group">
-                <label>玩家名称</label>
-                <input type="text" id="playerName" placeholder="输入名称" maxlength="12">
-            </div>
-            
-            <div class="input-group">
-                <label>房间号</label>
-                <input type="text" id="roomId" placeholder="输入房间号" maxlength="10">
-            </div>
-            
-            <div id="createOptions" style="display: none;">
+                <h1 class="pixel-title">CS 1.6</h1>
+                <h2 class="pixel-subtitle">3D 像素版</h2>
+                
+                <div class="tab-buttons">
+                    <button type="button" id="tabJoin" class="tab-btn active">加入房间</button>
+                    <button type="button" id="tabCreate" class="tab-btn">创建房间</button>
+                </div>
+                
                 <div class="input-group">
-                    <label>游戏模式</label>
-                    <select id="gameMode">
-                        <option value="deathmatch">团队竞技 (10分钟)</option>
-                        <option value="defuse">爆破模式 (回合制)</option>
-                    </select>
+                    <label>玩家名称 (2-8字符)</label>
+                    <input type="text" id="playerName" placeholder="输入名称" maxlength="8" minlength="2">
                 </div>
-                <div class="input-group" id="targetKillsGroup">
-                    <label>目标击杀数</label>
-                    <select id="targetKills">
-                        <option value="10">10 击杀</option>
-                        <option value="20" selected>20 击杀</option>
-                        <option value="30">30 击杀</option>
-                        <option value="50">50 击杀</option>
-                        <option value="100">100 击杀</option>
-                    </select>
-                </div>
+                
                 <div class="input-group">
-                    <label>选择地图</label>
-                    <select id="mapSelect">
-                        <option value="indoor" selected>室内竞技场 (Indoor)</option>
-                        <option value="shipment">运输船 (Shipment)</option>
-                        <option value="office">办公大楼 (Office)</option>
-                        <option value="warehouse">仓库 (Warehouse)</option>
-                    </select>
+                    <label>房间号 (8字符)</label>
+                    <input type="text" id="roomId" placeholder="输入8位房间号" maxlength="8">
                 </div>
-            </div>
-            
-            <div class="input-group">
-                <label>选择阵营 (每队最多5人)</label>
-                <div class="team-select">
-                    <button type="button" id="teamCT" class="team-btn ct-btn active">反恐精英 (CT)</button>
-                    <button type="button" id="teamT" class="team-btn t-btn">恐怖分子 (T)</button>
+                
+                <div id="createOptions" style="display: none;">
+                    <div class="input-group">
+                        <label>游戏模式</label>
+                        <select id="gameMode">
+                            <option value="deathmatch">团队竞技 (10分钟)</option>
+                            <option value="defuse">爆破模式 (回合制)</option>
+                            <option value="custom">自定义地图</option>
+                        </select>
+                    </div>
+                    <div class="input-group" id="targetKillsGroup">
+                        <label>目标击杀数</label>
+                        <select id="targetKills">
+                            <option value="10">10 击杀</option>
+                            <option value="20" selected>20 击杀</option>
+                            <option value="30">30 击杀</option>
+                            <option value="50">50 击杀</option>
+                            <option value="100">100 击杀</option>
+                        </select>
+                    </div>
+                    <div class="input-group" id="customMapGroup" style="display: none;">
+                        <label>导入地图文件</label>
+                        <input type="file" id="customMapFile" accept=".json" style="display: none;">
+                        <button type="button" id="importMapBtn" class="pixel-btn small">选择地图文件</button>
+                        <span id="customMapName" style="margin-left: 10px; color: #888;">未选择文件</span>
+                    </div>
+                    <div class="input-group" id="mapSelectGroup">
+                        <label>选择地图</label>
+                        <select id="mapSelect">
+                            <!-- 地图选项由 maps.js 动态生成 -->
+                        </select>
+                    </div>
                 </div>
-            </div>
-            
-            <button id="joinBtn" class="pixel-btn">加入游戏</button>
-            <button id="createBtn" class="pixel-btn" style="display: none;">创建房间</button>
+                
+                <div class="input-group">
+                    <label>选择阵营 (每队最多5人)</label>
+                    <div class="team-select">
+                        <button type="button" id="teamCT" class="team-btn ct-btn active">反恐精英 (CT)</button>
+                        <button type="button" id="teamT" class="team-btn t-btn">恐怖分子 (T)</button>
+                    </div>
+                </div>
+                
+                <!-- 服务器配置 -->
+                <div class="input-group server-config">
+                    <label>服务器地址 <span class="optional">(可选)</span></label>
+                    <div class="server-input-group">
+                        <input type="text" id="serverUrl" placeholder="ws://服务器地址:端口">
+                        <button type="button" id="saveServerBtn" class="pixel-btn small">保存</button>
+                    </div>
+                    <span id="currentServer" class="server-hint"></span>
+                </div>
+                
+                <button id="joinBtn" class="pixel-btn">加入游戏</button>
+                <button id="createBtn" class="pixel-btn" style="display: none;">创建房间</button>
             </div>
             
             <!-- 右侧：公告卡片 -->
@@ -136,7 +155,7 @@
         </div>
         
         <div id="top-hud">
-            <div id="ct-score" class="team-score ct">CT: 0</div>
+            <div id="ct-score" class="team-score ct">反恐精英: 0</div>
             <div id="game-info">
                 <span id="game-timer" style="display: none;">10:00</span>
                 <span id="game-mode-text"></span>
@@ -144,7 +163,7 @@
                 <span id="deathmatch-info">目标: <span id="target-kills">20</span> 击杀 | </span>
                 <span id="map-name">沙漠2</span>
             </div>
-            <div id="t-score" class="team-score t">T: 0</div>
+            <div id="t-score" class="team-score t">恐怖分子: 0</div>
         </div>
         
         <!-- 爆破模式专用UI -->
@@ -164,6 +183,15 @@
             </div>
             <div id="plant-hint" style="display: none;">按 E 或 鼠标左键 安放C4</div>
             <div id="defuse-hint" style="display: none;">按住 E 拆除C4</div>
+        </div>
+        
+        <!-- 观战模式UI -->
+        <div id="spectator-ui" style="display: none;">
+            <div id="spectator-info">
+                <span id="spectator-label">👁 观战中</span>
+                <span id="spectator-name">队友</span>
+            </div>
+            <div id="spectator-hint">鼠标左键切换观战目标</div>
         </div>
         
         <!-- 包点标记 -->

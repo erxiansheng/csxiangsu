@@ -10,6 +10,8 @@ const MapCache = {
 
 const MapConfigs = {
     'indoor': {
+        displayName: '室内竞技场 (Indoor)',  // 地图显示名称
+        gameMode: ['deathmatch'],  // 支持的游戏模式
         floorColor1: '#8b7355', floorColor2: '#7a6245',  // 温暖的木地板色
         wallColor1: '#c9a86c', wallColor2: '#a08050',    // 暖色墙壁
         skyColor: 0x87ceeb,  // 明亮的天空蓝
@@ -40,6 +42,8 @@ const MapConfigs = {
         ]
     },
     'dust2': {
+        displayName: '沙漠2 (Dust2)',  // 地图显示名称
+        gameMode: ['deathmatch', 'defuse'],  // 支持团队竞技和爆破模式
         floorColor1: '#c4a35a', floorColor2: '#b8963d',
         wallColor1: '#c9a227', wallColor2: '#8b7355',
         skyColor: 0x87ceeb,
@@ -64,6 +68,8 @@ const MapConfigs = {
         }
     },
     'shipment': {
+        displayName: '运输船 (Shipment)',  // 地图显示名称
+        gameMode: ['deathmatch'],  // 支持团队竞技
         floorColor1: '#5a5a5a', floorColor2: '#4a4a4a',
         wallColor1: '#8b4513', wallColor2: '#5a2d0d',
         skyColor: 0x708090,
@@ -96,6 +102,8 @@ const MapConfigs = {
         ]
     },
     'office': {
+        displayName: '办公大楼 (Office)',  // 地图显示名称
+        gameMode: ['deathmatch'],  // 支持团队竞技
         floorColor1: '#4a4a4a', floorColor2: '#3a3a3a',
         wallColor1: '#d4d4d4', wallColor2: '#a0a0a0',
         skyColor: 0x708090,
@@ -107,6 +115,8 @@ const MapConfigs = {
         ]
     },
     'warehouse': {
+        displayName: '仓库 (Warehouse)',  // 地图显示名称
+        gameMode: ['deathmatch'],  // 支持团队竞技
         floorColor1: '#5a5a5a', floorColor2: '#4a4a4a',
         wallColor1: '#8b4513', wallColor2: '#5a2d0d',
         skyColor: 0x6bb3d9,
@@ -115,16 +125,108 @@ const MapConfigs = {
             {x: 50, y: 12, z: 30, w: 25, h: 24, d: 25},
             {x: 0, y: 5, z: 0, w: 60, h: 10, d: 10}
         ]
+    },
+       'custom_map': {
+        displayName: '自定义地图',
+        gameMode: ['defuse'],
+        floorColor1: '#8b7355',
+        floorColor2: '#7a6245',
+        wallColor1: '#95a5a6',
+        wallColor2: '#7f8c8d',
+        skyColor: 0x6bb3d9,
+        mapSize: 300,
+        obstacles: [
+            {x: -280, y: 10, z: -300, w: 40, h: 20, d: 2},
+            {x: -280, y: 10, z: 300, w: 40, h: 20, d: 2},
+            {x: -240, y: 10, z: -300, w: 40, h: 20, d: 2},
+            {x: -240, y: 10, z: 300, w: 40, h: 20, d: 2},
+            {x: -200, y: 10, z: -300, w: 40, h: 20, d: 2},
+            {x: -200, y: 10, z: 300, w: 40, h: 20, d: 2},
+            {x: -160, y: 10, z: -300, w: 40, h: 20, d: 2},
+            {x: -160, y: 10, z: 300, w: 40, h: 20, d: 2},
+            {x: -120, y: 10, z: -300, w: 40, h: 20, d: 2},
+            {x: -120, y: 10, z: 300, w: 40, h: 20, d: 2},
+            {x: -80, y: 10, z: -300, w: 40, h: 20, d: 2},
+            {x: -80, y: 10, z: 300, w: 40, h: 20, d: 2},
+            {x: -40, y: 10, z: -300, w: 40, h: 20, d: 2},
+            {x: -40, y: 10, z: 300, w: 40, h: 20, d: 2},
+            {x: 0, y: 10, z: -300, w: 40, h: 20, d: 2},
+            {x: 0, y: 10, z: 300, w: 40, h: 20, d: 2},
+            {x: 40, y: 10, z: -300, w: 40, h: 20, d: 2},
+            {x: 40, y: 10, z: 300, w: 40, h: 20, d: 2},
+            {x: 80, y: 10, z: -300, w: 40, h: 20, d: 2},
+            {x: 80, y: 10, z: 300, w: 40, h: 20, d: 2},
+            {x: 120, y: 10, z: -300, w: 40, h: 20, d: 2},
+            {x: 120, y: 10, z: 300, w: 40, h: 20, d: 2},
+            {x: 160, y: 10, z: -300, w: 40, h: 20, d: 2},
+            {x: 160, y: 10, z: 300, w: 40, h: 20, d: 2},
+            {x: 200, y: 10, z: -300, w: 40, h: 20, d: 2},
+            {x: 200, y: 10, z: 300, w: 40, h: 20, d: 2},
+            {x: 240, y: 10, z: -300, w: 40, h: 20, d: 2},
+            {x: 240, y: 10, z: 300, w: 40, h: 20, d: 2},
+            {x: 280, y: 10, z: -300, w: 40, h: 20, d: 2},
+            {x: 280, y: 10, z: 300, w: 40, h: 20, d: 2},
+            {x: -300, y: 10, z: -280, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: 300, y: 10, z: -280, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: -300, y: 10, z: -240, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: 300, y: 10, z: -240, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: -300, y: 10, z: -200, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: 300, y: 10, z: -200, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: -300, y: 10, z: -160, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: 300, y: 10, z: -160, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: -300, y: 10, z: -120, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: 300, y: 10, z: -120, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: -300, y: 10, z: -80, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: 300, y: 10, z: -80, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: -300, y: 10, z: -40, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: 300, y: 10, z: -40, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: -300, y: 10, z: 0, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: 300, y: 10, z: 0, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: -300, y: 10, z: 40, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: 300, y: 10, z: 40, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: -300, y: 10, z: 80, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: 300, y: 10, z: 80, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: -300, y: 10, z: 120, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: 300, y: 10, z: 120, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: -300, y: 10, z: 160, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: 300, y: 10, z: 160, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: -300, y: 10, z: 200, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: 300, y: 10, z: 200, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: -300, y: 10, z: 240, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: 300, y: 10, z: 240, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: -300, y: 10, z: 280, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: 300, y: 10, z: 280, w: 40, h: 20, d: 2, rotation: 1.571}
+        ],
+        bombSites: {
+            A: { x: 32, z: -20, radius: 20 },
+            B: { x: 38, z: 66, radius: 20 }
+        },
+        spawnPoints: {
+            ct: [
+                {x: 28, z: 90},
+                {x: 10, z: 94},
+                {x: -14, z: 96},
+                {x: 44, z: 72},
+                {x: 16, z: 78}
+            ],
+            t: [
+                {x: -66, z: -136},
+                {x: -56, z: -142},
+                {x: -74, z: -120},
+                {x: -90, z: -120},
+                {x: -52, z: -120}
+            ]
+        }
     }
+    
 };
 
-const MapNames = { 
-    'indoor': '室内竞技场 (Indoor)',
-    'dust2': '沙漠2 (Dust2)', 
-    'shipment': '运输船 (Shipment)',
-    'office': '办公大楼', 
-    'warehouse': '仓库' 
-};
+// MapNames 已废弃，使用 MapConfigs 中的 displayName
+// 保留此对象用于向后兼容
+const MapNames = {};
+for (const [mapId, config] of Object.entries(MapConfigs)) {
+    MapNames[mapId] = config.displayName || mapId;
+}
 
 
 // 地图创建器
@@ -773,10 +875,8 @@ class MapBuilder {
             this.createBombSiteMarkers(mapConfig.bombSites);
         }
         
-        // 室内地图不需要雾效
-        if (!isIndoor) {
-            this.scene.fog = new THREE.Fog(mapConfig.skyColor, 100, 500);
-        }
+        // 室内地图不需要雾效 - 统一移除所有地图的雾效
+        this.scene.fog = null;
         
         return this.walls;
     }
@@ -968,4 +1068,47 @@ function preloadAllMaps(onProgress, onComplete) {
 // 检查是否已预加载
 function isMapPreloaded() {
     return MapCache.isPreloaded;
+}
+
+// 获取指定游戏模式支持的地图列表
+function getMapsForGameMode(gameMode) {
+    const maps = [];
+    for (const [mapId, config] of Object.entries(MapConfigs)) {
+        if (config.gameMode && config.gameMode.includes(gameMode)) {
+            maps.push({
+                id: mapId,
+                name: config.displayName || mapId
+            });
+        }
+    }
+    return maps;
+}
+
+// 动态更新地图选择下拉框
+function updateMapSelect(selectElement, gameMode) {
+    const maps = getMapsForGameMode(gameMode);
+    selectElement.innerHTML = '';
+    maps.forEach((map, index) => {
+        const option = document.createElement('option');
+        option.value = map.id;
+        option.textContent = map.name;
+        if (index === 0) option.selected = true;
+        selectElement.appendChild(option);
+    });
+}
+
+// 初始化地图选择（页面加载时调用）
+function initMapSelect() {
+    const mapSelect = document.getElementById('mapSelect');
+    const gameModeSelect = document.getElementById('gameMode');
+    
+    if (mapSelect && gameModeSelect) {
+        // 初始更新
+        updateMapSelect(mapSelect, gameModeSelect.value);
+        
+        // 监听游戏模式变化
+        gameModeSelect.addEventListener('change', () => {
+            updateMapSelect(mapSelect, gameModeSelect.value);
+        });
+    }
 }
