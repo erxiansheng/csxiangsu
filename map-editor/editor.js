@@ -24,9 +24,6 @@ class MapEditor {
         this.isLeftMouseDown = false;
         this.lastPlacedPosition = null;
         
-        // 预览旋转角度
-        this.previewRotation = 0;
-        
         // 橡皮擦模式
         this.isEraserMode = false;
         
@@ -58,7 +55,6 @@ class MapEditor {
             box: { w: 8, h: 8, d: 8, color: 0x8b7355, collision: true, textureType: 'metal' },
             crate: { w: 10, h: 10, d: 10, color: 0xa0522d, collision: true, textureType: 'wood' },
             door: { w: 8, h: 16, d: 2, color: 0x5d4e37, collision: true, textureType: 'woodDoor' },
-            ramp: { w: 20, h: 10, d: 30, color: 0x6c7a89, collision: true, isRamp: true, textureType: 'concrete' },
             bombsite_a: { w: 40, h: 0.5, d: 40, color: 0xe74c3c, collision: false, transparent: true },
             bombsite_b: { w: 40, h: 0.5, d: 40, color: 0x3498db, collision: false, transparent: true },
             spawn_ct: { w: 3, h: 15, d: 3, color: 0x2980b9, collision: false },
@@ -563,7 +559,6 @@ class MapEditor {
         document.querySelectorAll('.object-item').forEach(item => {
             item.addEventListener('dragstart', (e) => {
                 this.currentTool = e.target.dataset.type;
-                this.previewRotation = 0; // 拖拽新物件时重置旋转
                 this.createPlacementPreview(this.currentTool);
             });
             item.addEventListener('dragend', () => {
@@ -571,10 +566,6 @@ class MapEditor {
                 this.currentTool = null;
             });
             item.addEventListener('click', () => {
-                // 如果切换到不同的物件类型，重置旋转角度
-                if (this.currentTool !== item.dataset.type) {
-                    this.previewRotation = 0;
-                }
                 this.currentTool = item.dataset.type;
                 this.createPlacementPreview(this.currentTool);
             });
@@ -601,6 +592,7 @@ class MapEditor {
         document.getElementById('testMap').addEventListener('click', () => this.testView());
         document.getElementById('addFloor').addEventListener('click', () => this.addFullFloor());
         document.getElementById('addWalls').addEventListener('click', () => this.addBorderWalls());
+        document.getElementById('rotateMap90').addEventListener('click', () => this.rotateMapBy90());
         document.getElementById('eraserTool').addEventListener('click', () => this.toggleEraserMode());
         document.getElementById('undoBtn').addEventListener('click', () => this.undo());
         
@@ -705,7 +697,7 @@ class MapEditor {
             document.getElementById('coords').textContent = 
                 `X: ${Math.round(pos.x)}, Y: ${Math.round(pos.y)}, Z: ${Math.round(pos.z)}`;
             
-            // 更新预览位置和颜色（根据是否可放置）
+            // 更新预览位置和颜色
             if (this.placementPreview && this.currentTool) {
                 const config = this.objectTypes[this.currentTool];
                 const snappedPos = this.snapToGrid(pos);
@@ -713,24 +705,11 @@ class MapEditor {
                 
                 // 斜坡原点在底部，其他物件需要抬高半个高度
                 const baseY = config.isRamp ? 0 : config.h / 2;
+                this.placementPreview.position.y = baseY;
                 
-                // 检查重叠并计算Y位置
-                const overlapResult = this.checkOverlapAndFindY(snappedPos, config, this.currentTool);
-                if (overlapResult.hasOverlap && overlapResult.canStack) {
-                    this.placementPreview.position.y = overlapResult.stackY + baseY;
-                } else {
-                    this.placementPreview.position.y = baseY;
-                }
-                
-                // 检查是否可以放置，更新预览颜色
-                const canPlace = !this.checkOverlap(snappedPos, config, this.currentTool);
-                if (canPlace) {
-                    this.placementPreview.material.color.setHex(config.color);
-                    this.placementPreview.material.opacity = 0.5;
-                } else {
-                    this.placementPreview.material.color.setHex(0xff0000); // 红色表示不可放置
-                    this.placementPreview.material.opacity = 0.7;
-                }
+                // 允许重叠放置，预览始终显示正常颜色
+                this.placementPreview.material.color.setHex(config.color);
+                this.placementPreview.material.opacity = 0.5;
             }
             
             // 橡皮擦模式：按住左键拖动时连续删除物件
@@ -775,16 +754,17 @@ class MapEditor {
             this.deleteSelected();
         }
         if (e.code === 'KeyR') {
-            if (this.selectedObject) {
-                this.rotateSelected();
-            } else if (this.placementPreview && this.currentTool) {
-                // 旋转预览物件
+            // 旋转预览物件或已选中的物件，每次旋转90度
+            if (this.placementPreview) {
                 this.rotatePlacementPreview();
+            } else if (this.selectedObject) {
+                this.rotateSelected();
             }
         }
         if (e.code === 'Escape') {
+            // 取消所有选中状态
             this.deselectObject();
-            this.clearCurrentTool(); // 使用新方法，会重置旋转角度
+            this.clearCurrentTool();
             // 退出橡皮擦模式
             if (this.isEraserMode) {
                 this.toggleEraserMode();
@@ -839,7 +819,6 @@ class MapEditor {
         const mesh = this.createObjectMesh(type, config, true);
         mesh.material.opacity = 0.5;
         mesh.material.transparent = true;
-        mesh.rotation.y = this.previewRotation; // 应用预览旋转
         this.scene.add(mesh);
         this.placementPreview = mesh;
     }
@@ -849,22 +828,12 @@ class MapEditor {
             this.scene.remove(this.placementPreview);
             this.placementPreview = null;
         }
-        // 不重置旋转角度，保持旋转状态用于连续摆放
     }
     
-    // 清除当前工具和旋转状态
+    // 清除当前工具
     clearCurrentTool() {
         this.removePlacementPreview();
         this.currentTool = null;
-        this.previewRotation = 0; // 只有完全取消选择时才重置旋转
-    }
-    
-    // 旋转预览物件
-    rotatePlacementPreview() {
-        this.previewRotation += Math.PI / 4; // 每次旋转45度
-        if (this.placementPreview) {
-            this.placementPreview.rotation.y = this.previewRotation;
-        }
     }
 
     createObjectMesh(type, config, isPreview = false) {
@@ -958,23 +927,21 @@ class MapEditor {
         // 斜坡原点在底部，其他物件需要抬高半个高度
         let placementY = config.isRamp ? 0 : config.h / 2;
         
-        // 检查是否与现有物件重叠，如果重叠则尝试放在上方
+        // 检查重叠，如果完全重叠则自动堆叠到上方
         const overlapResult = this.checkOverlapAndFindY(snappedPos, config, type);
-        
-        if (overlapResult.hasOverlap) {
-            // 如果是同类型物件重叠且无法堆叠，则不放置
-            if (overlapResult.canStack) {
-                placementY = overlapResult.stackY + (config.isRamp ? 0 : config.h / 2);
-            } else {
-                return; // 无法放置
-            }
+        if (overlapResult.hasOverlap && overlapResult.canStack) {
+            placementY = overlapResult.stackY + (config.isRamp ? 0 : config.h / 2);
         }
         
         const mesh = this.createObjectMesh(type, config);
         mesh.position.x = snappedPos.x;
         mesh.position.z = snappedPos.z;
         mesh.position.y = placementY;
-        mesh.rotation.y = this.previewRotation; // 应用预览旋转角度
+        
+        // 应用预览物件的旋转角度
+        if (this.placementPreview) {
+            mesh.rotation.y = this.placementPreview.rotation.y;
+        }
         
         this.scene.add(mesh);
         this.objects.push(mesh);
@@ -1040,22 +1007,12 @@ class MapEditor {
                 }
                 
                 if (!isNewFloor && !isObjFloor) {
-                    // 非地板物件之间重叠
-                    // 检查是否是"完全重叠"（中心点在对方范围内）才允许堆叠
-                    const centerInObjX = position.x > objMinX + tolerance && position.x < objMaxX - tolerance;
-                    const centerInObjZ = position.z > objMinZ + tolerance && position.z < objMaxZ - tolerance;
-                    
-                    if (centerInObjX && centerInObjZ) {
-                        // 中心点在物件内，可以堆叠
-                        hasOverlap = true;
-                        canStack = true;
-                        const objTopY = obj.position.y + data.h / 2;
-                        if (objTopY > maxTopY) {
-                            maxTopY = objTopY;
-                        }
-                    } else {
-                        // 只是边缘重叠，不允许放置（会重叠）
-                        return { hasOverlap: true, canStack: false, stackY: 0 };
+                    // 非地板物件之间重叠，允许堆叠到上方
+                    hasOverlap = true;
+                    canStack = true;
+                    const objTopY = obj.position.y + data.h / 2;
+                    if (objTopY > maxTopY) {
+                        maxTopY = objTopY;
                     }
                 }
             }
@@ -1331,14 +1288,30 @@ class MapEditor {
     
     rotateSelected() {
         if (!this.selectedObject) return;
-        this.selectedObject.rotation.y += Math.PI / 4;
+        // 每次旋转90度
+        this.selectedObject.rotation.y += Math.PI / 2;
+        // 标准化角度到 0-2π
+        if (this.selectedObject.rotation.y >= Math.PI * 2) {
+            this.selectedObject.rotation.y -= Math.PI * 2;
+        }
         document.getElementById('prop-ry').value = Math.round(THREE.MathUtils.radToDeg(this.selectedObject.rotation.y));
+    }
+    
+    // 旋转预览物件
+    rotatePlacementPreview() {
+        if (!this.placementPreview) return;
+        // 每次旋转90度
+        this.placementPreview.rotation.y += Math.PI / 2;
+        // 标准化角度到 0-2π
+        if (this.placementPreview.rotation.y >= Math.PI * 2) {
+            this.placementPreview.rotation.y -= Math.PI * 2;
+        }
     }
     
     getTypeName(type) {
         const names = {
             floor: '地板', wall: '墙面', box: '箱子', crate: '木箱',
-            door: '门', ramp: '斜坡', bombsite_a: 'A点', bombsite_b: 'B点',
+            door: '门', bombsite_a: 'A点', bombsite_b: 'B点',
             spawn_ct: 'CT复活点', spawn_t: 'T复活点', barrel: '油桶',
             sandbag: '沙袋', graffiti: '涂鸦', light: '灯光'
         };
@@ -1419,6 +1392,35 @@ class MapEditor {
         }
     }
     
+    // 整体旋转地图90度（顺时针）
+    rotateMapBy90() {
+        if (this.objects.length === 0) {
+            alert('地图中没有物件可旋转');
+            return;
+        }
+        
+        // 旋转所有物件
+        this.objects.forEach(obj => {
+            // 保存原始位置
+            const oldX = obj.position.x;
+            const oldZ = obj.position.z;
+            
+            // 绕Y轴顺时针旋转90度：新X = 旧Z，新Z = -旧X
+            obj.position.x = oldZ;
+            obj.position.z = -oldX;
+            
+            // 物件自身也旋转90度
+            obj.rotation.y += Math.PI / 2;
+        });
+        
+        // 如果有选中的物件，更新属性面板
+        if (this.selectedObject) {
+            document.getElementById('prop-x').value = Math.round(this.selectedObject.position.x);
+            document.getElementById('prop-z').value = Math.round(this.selectedObject.position.z);
+            document.getElementById('prop-ry').value = Math.round(THREE.MathUtils.radToDeg(this.selectedObject.rotation.y));
+        }
+    }
+    
     // 保存为JSON文件
     saveMapAsJson() {
         const mapName = document.getElementById('mapName').value || 'custom_map';
@@ -1440,7 +1442,7 @@ class MapEditor {
             floorColor2: '#7a6245',
             wallColor1: '#95a5a6',
             wallColor2: '#7f8c8d',
-            skyColor: '0x6bb3d9',
+            skyColor: 0x6bb3d9,
             objects: []
         };
         
@@ -1670,38 +1672,107 @@ class MapEditor {
     loadMapData(data) {
         this.newMap();
         
-        if (data.mapName) {
+        // 兼容新格式（saveMapAsJson保存的格式）
+        if (data.name) {
+            document.getElementById('mapName').value = data.name;
+        } else if (data.mapName) {
             document.getElementById('mapName').value = data.mapName;
         }
-        if (data.size) {
-            document.getElementById('mapSize').value = data.size;
+        
+        if (data.displayName) {
+            document.getElementById('mapDisplayName').value = data.displayName;
         }
         
-        // 加载各类物件
-        if (data.walls) {
-            data.walls.forEach(w => this.loadObject('wall', w));
+        if (data.mapSize) {
+            document.getElementById('mapSize').value = data.mapSize;
+            this.updateMapSize(data.mapSize);
+        } else if (data.size) {
+            document.getElementById('mapSize').value = data.size;
+            this.updateMapSize(data.size);
         }
-        if (data.floors) {
-            data.floors.forEach(f => this.loadObject('floor', f));
+        
+        // 设置游戏模式
+        if (data.gameMode && Array.isArray(data.gameMode)) {
+            const gameModeSelect = document.getElementById('gameMode');
+            Array.from(gameModeSelect.options).forEach(opt => {
+                opt.selected = data.gameMode.includes(opt.value);
+            });
         }
-        if (data.boxes) {
-            data.boxes.forEach(b => this.loadObject(b.type || 'box', b));
+        
+        // 新格式：使用objects数组
+        if (data.objects && Array.isArray(data.objects)) {
+            data.objects.forEach(obj => {
+                this.loadObjectNew(obj);
+            });
+        } else {
+            // 旧格式：分开的数组
+            if (data.walls) {
+                data.walls.forEach(w => this.loadObject('wall', w));
+            }
+            if (data.floors) {
+                data.floors.forEach(f => this.loadObject('floor', f));
+            }
+            if (data.boxes) {
+                data.boxes.forEach(b => this.loadObject(b.type || 'box', b));
+            }
+            if (data.decorations) {
+                data.decorations.forEach(d => this.loadObject(d.type, d));
+            }
+            if (data.spawnsCT) {
+                data.spawnsCT.forEach(s => this.loadObject('spawn_ct', s));
+            }
+            if (data.spawnsT) {
+                data.spawnsT.forEach(s => this.loadObject('spawn_t', s));
+            }
+            if (data.bombSiteA) {
+                this.loadObject('bombsite_a', { x: data.bombSiteA.x, z: data.bombSiteA.z, w: data.bombSiteA.radius * 2, d: data.bombSiteA.radius * 2 });
+            }
+            if (data.bombSiteB) {
+                this.loadObject('bombsite_b', { x: data.bombSiteB.x, z: data.bombSiteB.z, w: data.bombSiteB.radius * 2, d: data.bombSiteB.radius * 2 });
+            }
         }
-        if (data.decorations) {
-            data.decorations.forEach(d => this.loadObject(d.type, d));
+    }
+    
+    // 加载新格式的物件（saveMapAsJson保存的格式）
+    loadObjectNew(objData) {
+        const type = objData.type;
+        const baseConfig = this.objectTypes[type];
+        if (!baseConfig) {
+            console.warn('未知物件类型:', type);
+            return;
         }
-        if (data.spawnsCT) {
-            data.spawnsCT.forEach(s => this.loadObject('spawn_ct', s));
+        
+        const config = {
+            w: objData.w || baseConfig.w,
+            h: objData.h || baseConfig.h,
+            d: objData.d || baseConfig.d,
+            color: objData.color !== undefined ? objData.color : baseConfig.color,
+            collision: baseConfig.collision,
+            isRamp: baseConfig.isRamp,
+            isCylinder: baseConfig.isCylinder,
+            isLight: baseConfig.isLight,
+            transparent: baseConfig.transparent,
+            textureType: baseConfig.textureType
+        };
+        
+        const mesh = this.createObjectMesh(type, config);
+        mesh.position.x = objData.x || 0;
+        mesh.position.z = objData.z || 0;
+        
+        // Y位置：如果保存了y值则使用，否则使用默认高度
+        if (objData.y !== undefined) {
+            mesh.position.y = objData.y;
+        } else {
+            mesh.position.y = config.isRamp ? 0 : config.h / 2;
         }
-        if (data.spawnsT) {
-            data.spawnsT.forEach(s => this.loadObject('spawn_t', s));
+        
+        // 旋转：新格式使用弧度
+        if (objData.rotation !== undefined) {
+            mesh.rotation.y = objData.rotation;
         }
-        if (data.bombSiteA) {
-            this.loadObject('bombsite_a', { x: data.bombSiteA.x, z: data.bombSiteA.z, w: data.bombSiteA.radius * 2, d: data.bombSiteA.radius * 2 });
-        }
-        if (data.bombSiteB) {
-            this.loadObject('bombsite_b', { x: data.bombSiteB.x, z: data.bombSiteB.z, w: data.bombSiteB.radius * 2, d: data.bombSiteB.radius * 2 });
-        }
+        
+        this.scene.add(mesh);
+        this.objects.push(mesh);
     }
     
     loadObject(type, data) {

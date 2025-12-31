@@ -41,32 +41,32 @@ const MapConfigs = {
             {x: 84.5, y: 15, z: 52, w: 2, h: 30, d: 65, color: 0xa67c52}
         ]
     },
-    'dust2': {
-        displayName: '沙漠2 (Dust2)',  // 地图显示名称
-        gameMode: ['deathmatch', 'defuse'],  // 支持团队竞技和爆破模式
-        floorColor1: '#c4a35a', floorColor2: '#b8963d',
-        wallColor1: '#c9a227', wallColor2: '#8b7355',
-        skyColor: 0x87ceeb,
-        mapSize: 300, // 大地图
-        // 沙漠地图 - 无障碍物，只保留包点
-        obstacles: [],
-        // 爆破模式包点位置
-        bombSites: {
-            A: { x: 180, z: -180, radius: 40 },
-            B: { x: -180, z: 180, radius: 40 }
-        },
-        // 出生点
-        spawnPoints: {
-            ct: [
-                {x: 250, z: 240}, {x: 240, z: 250}, {x: 260, z: 230},
-                {x: 230, z: 260}, {x: 270, z: 240}
-            ],
-            t: [
-                {x: -250, z: -240}, {x: -240, z: -250}, {x: -260, z: -230},
-                {x: -230, z: -260}, {x: -270, z: -240}
-            ]
-        }
-    },
+    // 'dust2': {
+    //     displayName: '沙漠2 (Dust2)',  // 地图显示名称
+    //     gameMode: ['deathmatch', 'defuse'],  // 支持团队竞技和爆破模式
+    //     floorColor1: '#c4a35a', floorColor2: '#b8963d',
+    //     wallColor1: '#c9a227', wallColor2: '#8b7355',
+    //     skyColor: 0x87ceeb,
+    //     mapSize: 300, // 大地图
+    //     // 沙漠地图 - 无障碍物，只保留包点
+    //     obstacles: [],
+    //     // 爆破模式包点位置
+    //     bombSites: {
+    //         A: { x: 180, z: -180, radius: 40 },
+    //         B: { x: -180, z: 180, radius: 40 }
+    //     },
+    //     // 出生点
+    //     spawnPoints: {
+    //         ct: [
+    //             {x: 250, z: 240}, {x: 240, z: 250}, {x: 260, z: 230},
+    //             {x: 230, z: 260}, {x: 270, z: 240}
+    //         ],
+    //         t: [
+    //             {x: -250, z: -240}, {x: -240, z: -250}, {x: -260, z: -230},
+    //             {x: -230, z: -260}, {x: -270, z: -240}
+    //         ]
+    //     }
+    // },
     'shipment': {
         displayName: '运输船 (Shipment)',  // 地图显示名称
         gameMode: ['deathmatch'],  // 支持团队竞技
@@ -126,8 +126,8 @@ const MapConfigs = {
             {x: 0, y: 5, z: 0, w: 60, h: 10, d: 10}
         ]
     },
-       'custom_map': {
-        displayName: '自定义地图',
+    'custom_shamo': {
+        displayName: '沙漠灰',
         gameMode: ['defuse'],
         floorColor1: '#8b7355',
         floorColor2: '#7a6245',
@@ -136,89 +136,275 @@ const MapConfigs = {
         skyColor: 0x6bb3d9,
         mapSize: 300,
         obstacles: [
-            {x: -280, y: 10, z: -300, w: 40, h: 20, d: 2},
-            {x: -280, y: 10, z: 300, w: 40, h: 20, d: 2},
-            {x: -240, y: 10, z: -300, w: 40, h: 20, d: 2},
-            {x: -240, y: 10, z: 300, w: 40, h: 20, d: 2},
-            {x: -200, y: 10, z: -300, w: 40, h: 20, d: 2},
-            {x: -200, y: 10, z: 300, w: 40, h: 20, d: 2},
-            {x: -160, y: 10, z: -300, w: 40, h: 20, d: 2},
-            {x: -160, y: 10, z: 300, w: 40, h: 20, d: 2},
-            {x: -120, y: 10, z: -300, w: 40, h: 20, d: 2},
-            {x: -120, y: 10, z: 300, w: 40, h: 20, d: 2},
-            {x: -80, y: 10, z: -300, w: 40, h: 20, d: 2},
-            {x: -80, y: 10, z: 300, w: 40, h: 20, d: 2},
-            {x: -40, y: 10, z: -300, w: 40, h: 20, d: 2},
-            {x: -40, y: 10, z: 300, w: 40, h: 20, d: 2},
-            {x: 0, y: 10, z: -300, w: 40, h: 20, d: 2},
-            {x: 0, y: 10, z: 300, w: 40, h: 20, d: 2},
-            {x: 40, y: 10, z: -300, w: 40, h: 20, d: 2},
-            {x: 40, y: 10, z: 300, w: 40, h: 20, d: 2},
-            {x: 80, y: 10, z: -300, w: 40, h: 20, d: 2},
-            {x: 80, y: 10, z: 300, w: 40, h: 20, d: 2},
-            {x: 120, y: 10, z: -300, w: 40, h: 20, d: 2},
-            {x: 120, y: 10, z: 300, w: 40, h: 20, d: 2},
-            {x: 160, y: 10, z: -300, w: 40, h: 20, d: 2},
-            {x: 160, y: 10, z: 300, w: 40, h: 20, d: 2},
-            {x: 200, y: 10, z: -300, w: 40, h: 20, d: 2},
-            {x: 200, y: 10, z: 300, w: 40, h: 20, d: 2},
-            {x: 240, y: 10, z: -300, w: 40, h: 20, d: 2},
-            {x: 240, y: 10, z: 300, w: 40, h: 20, d: 2},
-            {x: 280, y: 10, z: -300, w: 40, h: 20, d: 2},
-            {x: 280, y: 10, z: 300, w: 40, h: 20, d: 2},
-            {x: -300, y: 10, z: -280, w: 40, h: 20, d: 2, rotation: 1.571},
-            {x: 300, y: 10, z: -280, w: 40, h: 20, d: 2, rotation: 1.571},
-            {x: -300, y: 10, z: -240, w: 40, h: 20, d: 2, rotation: 1.571},
-            {x: 300, y: 10, z: -240, w: 40, h: 20, d: 2, rotation: 1.571},
-            {x: -300, y: 10, z: -200, w: 40, h: 20, d: 2, rotation: 1.571},
-            {x: 300, y: 10, z: -200, w: 40, h: 20, d: 2, rotation: 1.571},
-            {x: -300, y: 10, z: -160, w: 40, h: 20, d: 2, rotation: 1.571},
-            {x: 300, y: 10, z: -160, w: 40, h: 20, d: 2, rotation: 1.571},
-            {x: -300, y: 10, z: -120, w: 40, h: 20, d: 2, rotation: 1.571},
-            {x: 300, y: 10, z: -120, w: 40, h: 20, d: 2, rotation: 1.571},
-            {x: -300, y: 10, z: -80, w: 40, h: 20, d: 2, rotation: 1.571},
-            {x: 300, y: 10, z: -80, w: 40, h: 20, d: 2, rotation: 1.571},
-            {x: -300, y: 10, z: -40, w: 40, h: 20, d: 2, rotation: 1.571},
-            {x: 300, y: 10, z: -40, w: 40, h: 20, d: 2, rotation: 1.571},
-            {x: -300, y: 10, z: 0, w: 40, h: 20, d: 2, rotation: 1.571},
-            {x: 300, y: 10, z: 0, w: 40, h: 20, d: 2, rotation: 1.571},
-            {x: -300, y: 10, z: 40, w: 40, h: 20, d: 2, rotation: 1.571},
-            {x: 300, y: 10, z: 40, w: 40, h: 20, d: 2, rotation: 1.571},
-            {x: -300, y: 10, z: 80, w: 40, h: 20, d: 2, rotation: 1.571},
-            {x: 300, y: 10, z: 80, w: 40, h: 20, d: 2, rotation: 1.571},
-            {x: -300, y: 10, z: 120, w: 40, h: 20, d: 2, rotation: 1.571},
-            {x: 300, y: 10, z: 120, w: 40, h: 20, d: 2, rotation: 1.571},
-            {x: -300, y: 10, z: 160, w: 40, h: 20, d: 2, rotation: 1.571},
-            {x: 300, y: 10, z: 160, w: 40, h: 20, d: 2, rotation: 1.571},
-            {x: -300, y: 10, z: 200, w: 40, h: 20, d: 2, rotation: 1.571},
-            {x: 300, y: 10, z: 200, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: -300, y: 10, z: 280, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: 300, y: 10, z: 280, w: 40, h: 20, d: 2, rotation: 1.571},
             {x: -300, y: 10, z: 240, w: 40, h: 20, d: 2, rotation: 1.571},
             {x: 300, y: 10, z: 240, w: 40, h: 20, d: 2, rotation: 1.571},
-            {x: -300, y: 10, z: 280, w: 40, h: 20, d: 2, rotation: 1.571},
-            {x: 300, y: 10, z: 280, w: 40, h: 20, d: 2, rotation: 1.571}
+            {x: -300, y: 10, z: 200, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: 300, y: 10, z: 200, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: -300, y: 10, z: 160, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: 300, y: 10, z: 160, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: -300, y: 10, z: 120, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: 300, y: 10, z: 120, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: -300, y: 10, z: 80, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: 300, y: 10, z: 80, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: -300, y: 10, z: 40, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: 300, y: 10, z: 40, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: -300, y: 10, z: 0, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: 300, y: 10, z: 0, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: -300, y: 10, z: -40, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: 300, y: 10, z: -40, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: -300, y: 10, z: -80, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: 300, y: 10, z: -80, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: -300, y: 10, z: -120, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: 300, y: 10, z: -120, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: -300, y: 10, z: -160, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: 300, y: 10, z: -160, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: -300, y: 10, z: -200, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: 300, y: 10, z: -200, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: -300, y: 10, z: -240, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: 300, y: 10, z: -240, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: -300, y: 10, z: -280, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: 300, y: 10, z: -280, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: -280, y: 10, z: 300, w: 40, h: 20, d: 2, rotation: 3.142},
+            {x: -280, y: 10, z: -300, w: 40, h: 20, d: 2, rotation: 3.142},
+            {x: -240, y: 10, z: 300, w: 40, h: 20, d: 2, rotation: 3.142},
+            {x: -240, y: 10, z: -300, w: 40, h: 20, d: 2, rotation: 3.142},
+            {x: -200, y: 10, z: 300, w: 40, h: 20, d: 2, rotation: 3.142},
+            {x: -200, y: 10, z: -300, w: 40, h: 20, d: 2, rotation: 3.142},
+            {x: -160, y: 10, z: 300, w: 40, h: 20, d: 2, rotation: 3.142},
+            {x: -160, y: 10, z: -300, w: 40, h: 20, d: 2, rotation: 3.142},
+            {x: -120, y: 10, z: 300, w: 40, h: 20, d: 2, rotation: 3.142},
+            {x: -120, y: 10, z: -300, w: 40, h: 20, d: 2, rotation: 3.142},
+            {x: -80, y: 10, z: 300, w: 40, h: 20, d: 2, rotation: 3.142},
+            {x: -80, y: 10, z: -300, w: 40, h: 20, d: 2, rotation: 3.142},
+            {x: -40, y: 10, z: 300, w: 40, h: 20, d: 2, rotation: 3.142},
+            {x: -40, y: 10, z: -300, w: 40, h: 20, d: 2, rotation: 3.142},
+            {x: 0, y: 10, z: 300, w: 40, h: 20, d: 2, rotation: 3.142},
+            {x: 0, y: 10, z: -300, w: 40, h: 20, d: 2, rotation: 3.142},
+            {x: 40, y: 10, z: 300, w: 40, h: 20, d: 2, rotation: 3.142},
+            {x: 40, y: 10, z: -300, w: 40, h: 20, d: 2, rotation: 3.142},
+            {x: 80, y: 10, z: 300, w: 40, h: 20, d: 2, rotation: 3.142},
+            {x: 80, y: 10, z: -300, w: 40, h: 20, d: 2, rotation: 3.142},
+            {x: 120, y: 10, z: 300, w: 40, h: 20, d: 2, rotation: 3.142},
+            {x: 120, y: 10, z: -300, w: 40, h: 20, d: 2, rotation: 3.142},
+            {x: 160, y: 10, z: 300, w: 40, h: 20, d: 2, rotation: 3.142},
+            {x: 160, y: 10, z: -300, w: 40, h: 20, d: 2, rotation: 3.142},
+            {x: 200, y: 10, z: 300, w: 40, h: 20, d: 2, rotation: 3.142},
+            {x: 200, y: 10, z: -300, w: 40, h: 20, d: 2, rotation: 3.142},
+            {x: 240, y: 10, z: 300, w: 40, h: 20, d: 2, rotation: 3.142},
+            {x: 240, y: 10, z: -300, w: 40, h: 20, d: 2, rotation: 3.142},
+            {x: 280, y: 10, z: 300, w: 40, h: 20, d: 2, rotation: 3.142},
+            {x: 280, y: 10, z: -300, w: 40, h: 20, d: 2, rotation: 3.142},
+            {x: -142, y: 10, z: 234, w: 40, h: 20, d: 2, rotation: 3.142},
+            {x: -106, y: 10, z: 234, w: 40, h: 20, d: 2, rotation: 3.142},
+            {x: -70, y: 10, z: 234, w: 40, h: 20, d: 2, rotation: 3.142},
+            {x: -30, y: 10, z: 234, w: 40, h: 20, d: 2, rotation: 3.142},
+            {x: 4, y: 10, z: 234, w: 40, h: 20, d: 2, rotation: 3.142},
+            {x: 50, y: 10, z: 234, w: 32, h: 20, d: 1, rotation: 3.142},
+            {x: 82, y: 10, z: 234, w: 40, h: 20, d: 2, rotation: 3.142},
+            {x: 120, y: 10, z: 234, w: 40, h: 20, d: 2, rotation: 3.142},
+            {x: 138, y: 10, z: 190, w: 40, h: 20, d: 2, rotation: 7.854},
+            {x: 138, y: 10, z: 150, w: 40, h: 20, d: 2, rotation: 10.996},
+            {x: 118, y: 10, z: 208, w: 40, h: 20, d: 2, rotation: 12.567},
+            {x: 70, y: 10, z: 162, w: 40, h: 20, d: 2, rotation: 17.279},
+            {x: 70, y: 10, z: 122, w: 40, h: 20, d: 2, rotation: 17.279},
+            {x: 6, y: 10, z: 154, w: 40, h: 20, d: 2, rotation: 17.279},
+            {x: 6, y: 10, z: 194, w: 40, h: 20, d: 2, rotation: 17.279},
+            {x: 8, y: 10, z: 212, w: 43, h: 20, d: 2, rotation: 1.571},
+            {x: 6, y: 10, z: 114, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: 6, y: 10, z: 74, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: 6, y: 10, z: 34, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: 6, y: 10, z: -6, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: 6, y: 10, z: -46, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: 6, y: 10, z: -86, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: -14, y: 10, z: -106, w: 40, h: 20, d: 2, rotation: 3.142},
+            {x: 90, y: 10, z: 102, w: 40, h: 20, d: 2, rotation: 3.142},
+            {x: 138, y: 10, z: 110, w: 20, h: 20, d: 2, rotation: 4.713},
+            {x: 120, y: 10, z: 102, w: 40, h: 20, d: 2, rotation: 9.425},
+            {x: -14, y: 10, z: -142, w: 40, h: 20, d: 2, rotation: 9.425},
+            {x: 6, y: 10, z: -164, w: 40, h: 20, d: 2, rotation: 10.996},
+            {x: 74, y: 10, z: -182, w: 69, h: 20, d: 2, rotation: 25.133},
+            {x: 0, y: 10, z: -186, w: 40, h: 20, d: 2, rotation: 21.991},
+            {x: 156, y: 10, z: 38, w: 43, h: 20, d: 2, rotation: 3.142},
+            {x: 136, y: 10, z: 16, w: 44, h: 20, d: 2, rotation: 7.854},
+            {x: 136, y: 10, z: -24, w: 40, h: 20, d: 2, rotation: 7.854},
+            {x: 136, y: 10, z: -64, w: 40, h: 20, d: 2, rotation: 7.854},
+            {x: 136, y: 10, z: -104, w: 40, h: 20, d: 2, rotation: 7.854},
+            {x: 136, y: 10, z: -144, w: 40, h: 20, d: 2, rotation: 7.854},
+            {x: 280, y: 10, z: 38, w: 40, h: 20, d: 2, rotation: 9.425},
+            {x: 244, y: 10, z: 38, w: 40, h: 20, d: 2, rotation: 9.425},
+            {x: 140, y: 10, z: 126, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: 104, y: 4, z: 6, w: 8, h: 8, d: 8, rotation: 1.571},
+            {x: 104, y: 4, z: -2, w: 8, h: 8, d: 8, rotation: 1.571},
+            {x: 104, y: 4, z: 14, w: 8, h: 8, d: 8, rotation: 1.571},
+            {x: 104, y: 4, z: 22, w: 8, h: 8, d: 8, rotation: 1.571},
+            {x: 104, y: 4, z: 30, w: 8, h: 8, d: 8, rotation: 1.571},
+            {x: 104, y: 4, z: -10, w: 8, h: 8, d: 8, rotation: 1.571},
+            {x: 104, y: 4, z: -18, w: 8, h: 8, d: 8, rotation: 1.571},
+            {x: 104, y: 4, z: -26, w: 8, h: 8, d: 8, rotation: 1.571},
+            {x: 104, y: 4, z: -34, w: 8, h: 8, d: 8, rotation: 1.571},
+            {x: 104, y: 4, z: -42, w: 8, h: 8, d: 8, rotation: 1.571},
+            {x: 104, y: 4, z: -50, w: 8, h: 8, d: 8, rotation: 1.571},
+            {x: 104, y: 4, z: -58, w: 8, h: 8, d: 8, rotation: 1.571},
+            {x: 104, y: 4, z: -66, w: 8, h: 8, d: 8, rotation: 1.571},
+            {x: 104, y: 4, z: -74, w: 8, h: 8, d: 8, rotation: 1.571},
+            {x: 104, y: 4, z: -82, w: 8, h: 8, d: 8, rotation: 1.571},
+            {x: 104, y: 4, z: -90, w: 8, h: 8, d: 8, rotation: 1.571},
+            {x: 104, y: 4, z: -98, w: 8, h: 8, d: 8, rotation: 1.571},
+            {x: 104, y: 4, z: -106, w: 8, h: 8, d: 8, rotation: 1.571},
+            {x: 104, y: 4, z: -114, w: 8, h: 8, d: 8, rotation: 1.571},
+            {x: 104, y: 4, z: -122, w: 8, h: 8, d: 8, rotation: 1.571},
+            {x: 104, y: 4, z: -130, w: 8, h: 8, d: 8, rotation: 1.571},
+            {x: 104, y: 4, z: -138, w: 8, h: 8, d: 8, rotation: 1.571},
+            {x: 104, y: 4, z: -146, w: 8, h: 8, d: 8, rotation: 1.571},
+            {x: 104, y: 4, z: -162, w: 8, h: 8, d: 8, rotation: 1.571},
+            {x: 104, y: 4, z: -170, w: 8, h: 8, d: 8, rotation: 1.571},
+            {x: 112, y: 10, z: -182, w: 46, h: 20, d: 2, rotation: 9.425},
+            {x: 134, y: 10, z: -204, w: 41, h: 20, d: 2, rotation: 10.996},
+            {x: 186, y: 10, z: -192, w: 43, h: 20, d: 2, rotation: 12.567},
+            {x: 158, y: 10, z: -36, w: 44, h: 20, d: 2, rotation: 12.567},
+            {x: 248, y: 10, z: -16, w: 40, h: 20, d: 2, rotation: 14.137},
+            {x: 250, y: 10, z: 16, w: 44, h: 20, d: 2, rotation: 14.137},
+            {x: 206, y: 10, z: -170, w: 44, h: 20, d: 2, rotation: 14.137},
+            {x: 206, y: 10, z: -130, w: 40, h: 20, d: 2, rotation: 14.137},
+            {x: 164, y: 10, z: -94, w: 56, h: 20, d: 2, rotation: 18.85},
+            {x: -278, y: 10, z: 232, w: 40, h: 20, d: 2, rotation: 12.567},
+            {x: -240, y: 10, z: 232, w: 44, h: 20, d: 2, rotation: 15.708},
+            {x: -218, y: 10, z: 252, w: 40, h: 20, d: 2, rotation: 20.421},
+            {x: -216, y: 10, z: 278, w: 40, h: 20, d: 2, rotation: 20.421},
+            {x: -54, y: 10, z: -106, w: 40, h: 20, d: 2, rotation: 25.133},
+            {x: -94, y: 10, z: -106, w: 40, h: 20, d: 2, rotation: 25.133},
+            {x: -108, y: 10, z: -84, w: 40, h: 20, d: 2, rotation: 26.704},
+            {x: -108, y: 10, z: -44, w: 40, h: 20, d: 2, rotation: 26.704},
+            {x: -108, y: 10, z: -4, w: 40, h: 20, d: 2, rotation: 26.704},
+            {x: -108, y: 10, z: 36, w: 40, h: 20, d: 2, rotation: 26.704},
+            {x: -108, y: 10, z: 76, w: 40, h: 20, d: 2, rotation: 26.704},
+            {x: -108, y: 10, z: 116, w: 40, h: 20, d: 2, rotation: 26.704},
+            {x: -108, y: 10, z: 156, w: 40, h: 20, d: 2, rotation: 26.704},
+            {x: -108, y: 10, z: 196, w: 40, h: 20, d: 2, rotation: 26.704},
+            {x: -110, y: 9, z: 212, w: 44, h: 18, d: 2, rotation: 26.704},
+            {x: -54, y: 10, z: -142, w: 40, h: 20, d: 2, rotation: 28.275},
+            {x: -92, y: 10, z: -142, w: 40, h: 20, d: 2, rotation: 28.275},
+            {x: -132, y: 10, z: -142, w: 40, h: 20, d: 2, rotation: 28.275},
+            {x: -172, y: 10, z: -142, w: 40, h: 20, d: 2, rotation: 28.275},
+            {x: -210, y: 10, z: -142, w: 40, h: 20, d: 2, rotation: 28.275},
+            {x: -280, y: 10, z: -142, w: 40, h: 20, d: 2, rotation: 28.275},
+            {x: -260, y: 10, z: -164, w: 44, h: 20, d: 2, rotation: 29.845},
+            {x: -230, y: 10, z: -164, w: 45, h: 20, d: 2, rotation: 29.845},
+            {x: -280, y: 10, z: -186, w: 40, h: 20, d: 2, rotation: 34.558},
+            {x: -194, y: 10, z: -172, w: 40, h: 20, d: 2, rotation: 40.841},
+            {x: -174, y: 10, z: -194, w: 39, h: 20, d: 2, rotation: 42.412},
+            {x: -172, y: 10, z: -278, w: 40, h: 20, d: 2, rotation: 42.412},
+            {x: -170, y: 10, z: -250, w: 40, h: 20, d: 2, rotation: 42.412},
+            {x: -134, y: 10, z: -106, w: 40, h: 20, d: 2, rotation: 3.142},
+            {x: -174, y: 10, z: -106, w: 40, h: 20, d: 2, rotation: 3.142},
+            {x: -276, y: 10, z: -104, w: 50, h: 20, d: 2, rotation: 3.142},
+            {x: -248, y: 10, z: -104, w: 40, h: 20, d: 2, rotation: 3.142},
+            {x: -154, y: 10, z: -174, w: 40, h: 20, d: 2, rotation: 3.142},
+            {x: -116, y: 10, z: -174, w: 40, h: 20, d: 2, rotation: 3.142},
+            {x: -78, y: 10, z: -174, w: 40, h: 20, d: 2, rotation: 3.142},
+            {x: -38, y: 10, z: -174, w: 40, h: 20, d: 2, rotation: 6.283},
+            {x: 136, y: 10, z: -276, w: 40, h: 20, d: 2, rotation: 7.854},
+            {x: -22, y: 4, z: -180, w: 8, h: 8, d: 8, rotation: 1.571},
+            {x: -22, y: 12, z: -180, w: 8, h: 8, d: 8, rotation: 1.571},
+            {x: -22, y: 20, z: -180, w: 8, h: 8, d: 8, rotation: 1.571},
+            {x: 142, y: 4, z: -294, w: 8, h: 8, d: 8, rotation: 1.571},
+            {x: 178, y: 10, z: -256, w: 40, h: 20, d: 2, rotation: 3.142},
+            {x: 218, y: 10, z: -256, w: 40, h: 20, d: 2, rotation: 3.142},
+            {x: 236, y: 10, z: -234, w: 42, h: 20, d: 2, rotation: 4.713},
+            {x: 242, y: 4, z: -218, w: 8, h: 8, d: 8, rotation: 1.571},
+            {x: -292, y: 4, z: -250, w: 8, h: 8, d: 8, rotation: 1.571},
+            {x: -284, y: 4, z: -250, w: 8, h: 8, d: 8, rotation: 1.571},
+            {x: -276, y: 4, z: -250, w: 8, h: 8, d: 8, rotation: 1.571},
+            {x: -276, y: 12, z: -250, w: 8, h: 8, d: 8, rotation: 1.571},
+            {x: -292, y: 12, z: -250, w: 8, h: 8, d: 8, rotation: 1.571},
+            {x: -254, y: 4, z: -250, w: 8, h: 8, d: 8, rotation: 1.571},
+            {x: -254, y: 4, z: -258, w: 8, h: 8, d: 8, rotation: 1.571},
+            {x: -254, y: 4, z: -266, w: 8, h: 8, d: 8, rotation: 1.571},
+            {x: -254, y: 4, z: -274, w: 8, h: 8, d: 8, rotation: 1.571},
+            {x: -254, y: 4, z: -282, w: 8, h: 8, d: 8, rotation: 1.571},
+            {x: -254, y: 4, z: -290, w: 8, h: 8, d: 8, rotation: 1.571},
+            {x: -254, y: 12, z: -250, w: 8, h: 8, d: 8, rotation: 1.571},
+            {x: -254, y: 12, z: -258, w: 8, h: 8, d: 8, rotation: 1.571},
+            {x: -254, y: 12, z: -274, w: 8, h: 8, d: 8, rotation: 1.571},
+            {x: -254, y: 12, z: -282, w: 8, h: 8, d: 8, rotation: 1.571},
+            {x: 104, y: 12, z: -162, w: 8, h: 8, d: 8, rotation: 1.571},
+            {x: 104, y: 12, z: -138, w: 8, h: 8, d: 8, rotation: 1.571},
+            {x: 104, y: 12, z: -130, w: 8, h: 8, d: 8, rotation: 1.571},
+            {x: 104, y: 12, z: -114, w: 8, h: 8, d: 8, rotation: 1.571},
+            {x: 104, y: 12, z: -106, w: 8, h: 8, d: 8, rotation: 1.571},
+            {x: 104, y: 12, z: -90, w: 8, h: 8, d: 8, rotation: 1.571},
+            {x: 104, y: 12, z: -82, w: 8, h: 8, d: 8, rotation: 1.571},
+            {x: 104, y: 12, z: -66, w: 8, h: 8, d: 8, rotation: 1.571},
+            {x: 104, y: 12, z: -58, w: 8, h: 8, d: 8, rotation: 1.571},
+            {x: 104, y: 12, z: -42, w: 8, h: 8, d: 8, rotation: 1.571},
+            {x: 104, y: 12, z: -34, w: 8, h: 8, d: 8, rotation: 1.571},
+            {x: 104, y: 12, z: -18, w: 8, h: 8, d: 8, rotation: 1.571},
+            {x: 104, y: 12, z: -10, w: 8, h: 8, d: 8, rotation: 1.571},
+            {x: 104, y: 12, z: 6, w: 8, h: 8, d: 8, rotation: 1.571},
+            {x: 104, y: 12, z: 22, w: 8, h: 8, d: 8, rotation: 1.571},
+            {x: 29, y: 4, z: 233, w: 5, h: 10, d: 10, rotation: 1.571},
+            {x: 104, y: 4, z: -154, w: 8, h: 8, d: 8, rotation: 1.571},
+            {x: 104, y: 12, z: -146, w: 8, h: 8, d: 8, rotation: 1.571},
+            {x: 104, y: 4, z: -177, w: 8, h: 8, d: 9, rotation: 1.571},
+            {x: -210, y: 10, z: -186, w: 40, h: 20, d: 2},
+            {x: -194, y: 10, z: -186, w: 40, h: 20, d: 2},
+            {x: 156, y: 10, z: -162, w: 40, h: 20, d: 2},
+            {x: 280, y: 10, z: 228, w: 40, h: 20, d: 2},
+            {x: 240, y: 10, z: 228, w: 40, h: 20, d: 2},
+            {x: 200, y: 10, z: 282, w: 40, h: 20, d: 2, rotation: 4.712},
+            {x: 220, y: 10, z: 228, w: 40, h: 20, d: 2, rotation: 3.142},
+            {x: 200, y: 10, z: 248, w: 40, h: 20, d: 2, rotation: 4.712},
+            {x: 70, y: 10, z: 186, w: 40, h: 20, d: 2, rotation: 4.712},
+            {x: 88, y: 10, z: 206, w: 40, h: 20, d: 2},
+            {x: 210, y: 10, z: 38, w: 40, h: 20, d: 2},
+            {x: 166, y: 10, z: -174, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: 186, y: 10, z: -94, w: 40, h: 20, d: 2, rotation: 3.142},
+            {x: 206, y: 10, z: -114, w: 40, h: 20, d: 2, rotation: 4.712},
+            {x: 136, y: 10, z: -260, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: -186, y: 10, z: -106, w: 40, h: 20, d: 2, rotation: 3.142},
+            {x: 20, y: 8, z: -182, w: 8, h: 16, d: 2, rotation: 1.571},
+            {x: 52, y: 10, z: -182, w: 40, h: 20, d: 2},
+            {x: 32, y: 8, z: -180, w: 8, h: 16, d: 2, rotation: 1.571},
+            {x: 56, y: 0, z: -170, w: 20, h: 10, d: 30, rotation: 4.712},
+            {x: -230, y: 10, z: -86, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: -206, y: 10, z: -88, w: 40, h: 20, d: 2, rotation: 1.571},
+            {x: -186, y: 10, z: -70, w: 40, h: 20, d: 2, rotation: 3.142},
+            {x: -150, y: 10, z: -70, w: 40, h: 20, d: 2, rotation: 3.142},
+            {x: -128, y: 10, z: -70, w: 40, h: 20, d: 2, rotation: 3.142},
+            {x: -250, y: 10, z: -66, w: 40, h: 20, d: 2, rotation: 3.142},
+            {x: -280, y: 10, z: -66, w: 40, h: 20, d: 2, rotation: 3.142},
+            {x: 8, y: 8, z: -140, w: 8, h: 16, d: 2, rotation: 4.712},
+            {x: 8, y: 8, z: -134, w: 8, h: 16, d: 2, rotation: 4.712},
+            {x: -72, y: 4, z: -138, w: 8, h: 8, d: 8},
+            {x: -72, y: 4, z: -130, w: 8, h: 8, d: 8},
+            {x: 214, y: 10, z: -36, w: 40, h: 20, d: 2},
+            {x: 228, y: 10, z: -34, w: 40, h: 20, d: 2},
+            {x: 6, y: 8, z: -110, w: 8, h: 16, d: 2, rotation: 1.571},
+            {x: 6, y: 8, z: -118, w: 8, h: 16, d: 2, rotation: 1.571}
         ],
         bombSites: {
-            A: { x: 32, z: -20, radius: 20 },
-            B: { x: 38, z: 66, radius: 20 }
+            A: { x: 240, z: -278, radius: 20 },
+            B: { x: -200, z: -278, radius: 20 }
         },
         spawnPoints: {
             ct: [
-                {x: 28, z: 90},
-                {x: 10, z: 94},
-                {x: -14, z: 96},
-                {x: 44, z: 72},
-                {x: 16, z: 78}
+                {x: 94, z: -276},
+                {x: 90, z: -254},
+                {x: 66, z: -260},
+                {x: -60, z: -272},
+                {x: -40, z: -252}
             ],
             t: [
-                {x: -66, z: -136},
-                {x: -56, z: -142},
-                {x: -74, z: -120},
-                {x: -90, z: -120},
-                {x: -52, z: -120}
+                {x: -32, z: 246},
+                {x: -20, z: 268},
+                {x: -40, z: 270},
+                {x: 58, z: 250},
+                {x: 58, z: 274}
             ]
         }
     }
-    
 };
 
 // MapNames 已废弃，使用 MapConfigs 中的 displayName
@@ -794,9 +980,38 @@ class MapBuilder {
                 wall.rotation.y = rotation;
             }
             self.scene.add(wall);
-            const expandedW = rotation ? Math.max(w, d) * 1.2 : w;
-            const expandedD = rotation ? Math.max(w, d) * 1.2 : d;
-            self.walls.push({ mesh: wall, x: x - expandedW/2, z: z - expandedD/2, w: expandedW, d: expandedD, h: y + h/2 });
+            
+            // 存储碰撞数据
+            // 对于旋转的墙壁，存储原始尺寸和旋转角度，碰撞检测时使用OBB
+            // 对于非旋转墙壁，使用AABB
+            if (rotation && rotation !== 0) {
+                // 旋转墙壁：存储中心点和原始尺寸
+                self.walls.push({ 
+                    mesh: wall, 
+                    // 存储为AABB格式的左下角（用于兼容性），但碰撞检测会使用中心点
+                    x: x - w/2, 
+                    z: z - d/2, 
+                    w: w, 
+                    d: d, 
+                    h: y + h/2,
+                    rotation: rotation,
+                    originalW: w,
+                    originalD: d,
+                    centerX: x,
+                    centerZ: z
+                });
+            } else {
+                // 非旋转墙壁：使用AABB
+                self.walls.push({ 
+                    mesh: wall, 
+                    x: x - w/2, 
+                    z: z - d/2, 
+                    w: w, 
+                    d: d, 
+                    h: y + h/2,
+                    rotation: 0
+                });
+            }
         };
         
         // 创建屋顶（平面）
@@ -828,42 +1043,46 @@ class MapBuilder {
         }
         
         // 添加涂鸦到边界墙 - 紧贴单层墙面
-        // 北墙涂鸦（墙在 z = -boundarySize）
-        this.addGraffitiToWall(-40, 10, -boundarySize + 0.1, 0, 1.2);
-        this.addGraffitiToWall(40, 12, -boundarySize + 0.1, 0, 1);
-        // 南墙涂鸦（墙在 z = boundarySize）
-        this.addGraffitiToWall(-30, 8, boundarySize - 0.1, Math.PI, 1);
-        this.addGraffitiToWall(50, 14, boundarySize - 0.1, Math.PI, 1.3);
-        // 西墙涂鸦（墙在 x = -boundarySize）
-        this.addGraffitiToWall(-boundarySize + 0.1, 10, -20, Math.PI / 2, 1);
-        this.addGraffitiToWall(-boundarySize + 0.1, 12, 40, Math.PI / 2, 1.1);
-        // 东墙涂鸦（墙在 x = boundarySize）
-        this.addGraffitiToWall(boundarySize - 0.1, 8, 0, -Math.PI / 2, 1.2);
-        this.addGraffitiToWall(boundarySize - 0.1, 15, -50, -Math.PI / 2, 1);
-        
-        // 在内部建筑墙上也添加涂鸦
-        if (mapConfig.obstacles.length > 0) {
-            // 随机选择几个障碍物添加涂鸦
-            const numGraffitis = Math.min(6, mapConfig.obstacles.length);
-            const usedIndices = new Set();
+        // 自定义地图不添加自动涂鸦
+        const isCustomMap = mapName && mapName.startsWith('custom_');
+        if (!isCustomMap) {
+            // 北墙涂鸦（墙在 z = -boundarySize）
+            this.addGraffitiToWall(-40, 10, -boundarySize + 0.1, 0, 1.2);
+            this.addGraffitiToWall(40, 12, -boundarySize + 0.1, 0, 1);
+            // 南墙涂鸦（墙在 z = boundarySize）
+            this.addGraffitiToWall(-30, 8, boundarySize - 0.1, Math.PI, 1);
+            this.addGraffitiToWall(50, 14, boundarySize - 0.1, Math.PI, 1.3);
+            // 西墙涂鸦（墙在 x = -boundarySize）
+            this.addGraffitiToWall(-boundarySize + 0.1, 10, -20, Math.PI / 2, 1);
+            this.addGraffitiToWall(-boundarySize + 0.1, 12, 40, Math.PI / 2, 1.1);
+            // 东墙涂鸦（墙在 x = boundarySize）
+            this.addGraffitiToWall(boundarySize - 0.1, 8, 0, -Math.PI / 2, 1.2);
+            this.addGraffitiToWall(boundarySize - 0.1, 15, -50, -Math.PI / 2, 1);
             
-            for (let i = 0; i < numGraffitis; i++) {
-                let idx;
-                do {
-                    idx = Math.floor(Math.random() * mapConfig.obstacles.length);
-                } while (usedIndices.has(idx) && usedIndices.size < mapConfig.obstacles.length);
-                usedIndices.add(idx);
+            // 在内部建筑墙上也添加涂鸦
+            if (mapConfig.obstacles.length > 0) {
+                // 随机选择几个障碍物添加涂鸦
+                const numGraffitis = Math.min(6, mapConfig.obstacles.length);
+                const usedIndices = new Set();
                 
-                const o = mapConfig.obstacles[idx];
-                // 根据墙的朝向添加涂鸦 - 紧贴单层墙面
-                if (o.w > o.d) {
-                    // 宽墙，涂鸦在前后
-                    const side = Math.random() > 0.5 ? 1 : -1;
-                    this.addGraffitiToWall(o.x, o.y, o.z + 0.1 * side, side > 0 ? 0 : Math.PI, 0.8);
-                } else {
-                    // 深墙，涂鸦在左右
-                    const side = Math.random() > 0.5 ? 1 : -1;
-                    this.addGraffitiToWall(o.x + 0.1 * side, o.y, o.z, side > 0 ? -Math.PI / 2 : Math.PI / 2, 0.8);
+                for (let i = 0; i < numGraffitis; i++) {
+                    let idx;
+                    do {
+                        idx = Math.floor(Math.random() * mapConfig.obstacles.length);
+                    } while (usedIndices.has(idx) && usedIndices.size < mapConfig.obstacles.length);
+                    usedIndices.add(idx);
+                    
+                    const o = mapConfig.obstacles[idx];
+                    // 根据墙的朝向添加涂鸦 - 紧贴单层墙面
+                    if (o.w > o.d) {
+                        // 宽墙，涂鸦在前后
+                        const side = Math.random() > 0.5 ? 1 : -1;
+                        this.addGraffitiToWall(o.x, o.y, o.z + 0.1 * side, side > 0 ? 0 : Math.PI, 0.8);
+                    } else {
+                        // 深墙，涂鸦在左右
+                        const side = Math.random() > 0.5 ? 1 : -1;
+                        this.addGraffitiToWall(o.x + 0.1 * side, o.y, o.z, side > 0 ? -Math.PI / 2 : Math.PI / 2, 0.8);
+                    }
                 }
             }
         }

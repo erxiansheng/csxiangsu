@@ -72,8 +72,10 @@ class PixelCS3D {
         
         this.crosshairOffset = 0;
         this.isScoped = false;
+        this.scopeLevel = 0; // 0=无开镜, 1=一倍镜, 2=二倍镜
         this.normalFOV = 75;
-        this.scopedFOV = 30;
+        this.scopedFOV1 = 30;  // 一倍镜FOV
+        this.scopedFOV2 = 15;  // 二倍镜FOV
         this.buyMenuOpen = false;
         this.settingsMenuOpen = false;
         this.respawnTimer = null;
@@ -83,6 +85,7 @@ class PixelCS3D {
         this.baseSensitivity = 0.002;
         this.sensitivityMultiplier = 1.0;
         this.scopeSensitivityMultiplier = 0.6;
+        this.scopeSensitivityMultiplier2 = 0.3; // 二倍镜灵敏度更低
         this.masterVolume = 1.0;
         
         // 连杀追踪
@@ -398,7 +401,13 @@ class PixelCS3D {
     processMouseMovement() {
         if (this.pendingMouseX === 0 && this.pendingMouseY === 0) return;
         const baseSens = this.baseSensitivity * this.sensitivityMultiplier;
-        const sensitivity = this.isScoped ? baseSens * this.scopeSensitivityMultiplier : baseSens;
+        // 根据开镜等级调整灵敏度
+        let sensitivity = baseSens;
+        if (this.scopeLevel === 1) {
+            sensitivity = baseSens * this.scopeSensitivityMultiplier;
+        } else if (this.scopeLevel === 2) {
+            sensitivity = baseSens * this.scopeSensitivityMultiplier2;
+        }
         this.yaw -= this.pendingMouseX * sensitivity;
         this.pitch -= this.pendingMouseY * sensitivity;
         this.pitch = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, this.pitch));
@@ -568,6 +577,15 @@ class PixelCS3D {
         
         // 动态注册地图配置
         const mapId = mapData.name || 'custom_imported';
+        // 解析skyColor，支持字符串和数字格式
+        let skyColor = 0x6bb3d9;
+        if (mapData.skyColor !== undefined) {
+            if (typeof mapData.skyColor === 'string') {
+                skyColor = parseInt(mapData.skyColor.replace('0x', ''), 16) || 0x6bb3d9;
+            } else {
+                skyColor = mapData.skyColor;
+            }
+        }
         MapConfigs[mapId] = {
             displayName: mapData.displayName || '自定义地图',
             gameMode: gameMode,
@@ -575,7 +593,7 @@ class PixelCS3D {
             floorColor2: mapData.floorColor2 || '#7a6245',
             wallColor1: mapData.wallColor1 || '#95a5a6',
             wallColor2: mapData.wallColor2 || '#7f8c8d',
-            skyColor: parseInt(mapData.skyColor) || 0x6bb3d9,
+            skyColor: skyColor,
             mapSize: mapData.mapSize || 300,
             obstacles: this.convertObjectsToObstacles(mapData.objects || []),
             bombSites: mapData.bombSites || {},
@@ -954,7 +972,7 @@ class PixelCS3D {
     }
     
     startWeaponSwitch(newWeapon) {
-        if (this.isScoped) this.toggleScope();
+        if (this.isScoped) this.closeScope(); // 使用closeScope确保完全关闭
         this.previousWeapon = this.currentWeapon;
         this.isSwitchingWeapon = true;
         this.switchAnimProgress = 0;
@@ -1002,11 +1020,22 @@ class PixelCS3D {
     
     toggleScope() {
         if (this.currentWeapon !== 'awp') return;
-        this.isScoped = !this.isScoped;
+        
+        // 三级开镜：0->1->2->0
+        this.scopeLevel = (this.scopeLevel + 1) % 3;
+        this.isScoped = this.scopeLevel > 0;
+        
         document.getElementById('scope').style.display = this.isScoped ? 'block' : 'none';
         document.getElementById('crosshair').style.display = this.isScoped ? 'none' : 'block';
+        
         if (this.camera) {
-            this.camera.fov = this.isScoped ? this.scopedFOV : this.normalFOV;
+            if (this.scopeLevel === 0) {
+                this.camera.fov = this.normalFOV;
+            } else if (this.scopeLevel === 1) {
+                this.camera.fov = this.scopedFOV1;
+            } else {
+                this.camera.fov = this.scopedFOV2;
+            }
             this.camera.updateProjectionMatrix();
         }
         if (this.gunModel) this.gunModel.visible = !this.isScoped;
@@ -1015,6 +1044,7 @@ class PixelCS3D {
     closeScope() {
         if (!this.isScoped) return;
         this.isScoped = false;
+        this.scopeLevel = 0;
         document.getElementById('scope').style.display = 'none';
         document.getElementById('crosshair').style.display = 'block';
         if (this.camera) {
@@ -2842,80 +2872,232 @@ class PixelCS3D {
     }
 
     // ==================== 游戏循环 ====================
+    // 检测点到旋转矩形的碰撞（使用OBB算法）
+    checkRotatedRectCollision(px, pz, cx, cz, hw, hd, rotation) {
+        // 将玩家位置转换到矩形的局部坐标系（反向旋转）
+        // Three.js的rotation.y是绕Y轴旋转，正值为逆时针（从上往下看）
+        const cos = Math.cos(-rotation);  // 反向旋转
+        const sin = Math.sin(-rotation);
+        const dx = px - cx;
+        const dz = pz - cz;
+        // 旋转变换：将世界坐标转换到局部坐标
+        const localX = dx * cos - dz * sin;
+        const localZ = dx * sin + dz * cos;
+        
+        // 计算到矩形边缘的最近点（在局部坐标系中）
+        const clampedX = Math.max(-hw, Math.min(hw, localX));
+        const clampedZ = Math.max(-hd, Math.min(hd, localZ));
+        
+        // 计算从最近点到玩家的向量（在局部坐标系中）
+        const localDistX = localX - clampedX;
+        const localDistZ = localZ - clampedZ;
+        const dist = Math.sqrt(localDistX * localDistX + localDistZ * localDistZ);
+        
+        // 检查是否在矩形内部
+        const isInside = Math.abs(localX) <= hw && Math.abs(localZ) <= hd;
+        
+        // 计算推力方向
+        let worldPushX, worldPushZ;
+        
+        if (isInside) {
+            // 在内部：找到最近的边并推出
+            const distToLeft = localX + hw;
+            const distToRight = hw - localX;
+            const distToBack = localZ + hd;
+            const distToFront = hd - localZ;
+            const minDist = Math.min(distToLeft, distToRight, distToBack, distToFront);
+            
+            let localPushX = 0, localPushZ = 0;
+            if (minDist === distToLeft) {
+                localPushX = -1;
+            } else if (minDist === distToRight) {
+                localPushX = 1;
+            } else if (minDist === distToBack) {
+                localPushZ = -1;
+            } else {
+                localPushZ = 1;
+            }
+            
+            // 转换回世界坐标（正向旋转）
+            const cosR = Math.cos(rotation);
+            const sinR = Math.sin(rotation);
+            worldPushX = localPushX * cosR - localPushZ * sinR;
+            worldPushZ = localPushX * sinR + localPushZ * cosR;
+            
+            return { dist: -minDist, pushX: worldPushX, pushZ: worldPushZ, isInside: true, penetration: minDist };
+        } else {
+            // 在外部：推力方向是从最近点指向玩家
+            if (dist > 0.001) {
+                // 归一化局部推力方向
+                const localPushX = localDistX / dist;
+                const localPushZ = localDistZ / dist;
+                // 转换回世界坐标（正向旋转）
+                const cosR = Math.cos(rotation);
+                const sinR = Math.sin(rotation);
+                worldPushX = localPushX * cosR - localPushZ * sinR;
+                worldPushZ = localPushX * sinR + localPushZ * cosR;
+            } else {
+                worldPushX = 1;
+                worldPushZ = 0;
+            }
+            
+            return { dist, pushX: worldPushX, pushZ: worldPushZ, isInside: false, penetration: 0 };
+        }
+    }
+    
     checkCollision(newX, newZ, checkHeight = null) {
         const playerRadius = 2.5;
-        // 动态获取地图边界
         const mapConfig = MapConfigs[this.selectedMap];
         const mapSize = (mapConfig && mapConfig.mapSize) || 125;
-        // 边界应该是地图大小，玩家可以走到边缘
         const mapBoundary = mapSize;
         const playerHeight = checkHeight !== null ? checkHeight : this.camera.position.y;
-        const maxJumpHeight = 20; // 允许跳跃到更高的障碍物上
+        const maxJumpHeight = 20;
         
-        let clampedX = Math.max(-mapBoundary, Math.min(mapBoundary, newX));
-        let clampedZ = Math.max(-mapBoundary, Math.min(mapBoundary, newZ));
+        let resultX = newX;
+        let resultZ = newZ;
         let blocked = false;
-        let pushX = 0, pushZ = 0;
         let standingOnHeight = 0;
         
-        if (clampedX !== newX || clampedZ !== newZ) {
-            blocked = true;
-            pushX = clampedX - newX;
-            pushZ = clampedZ - newZ;
+        // 边界碰撞
+        if (resultX < -mapBoundary) { resultX = -mapBoundary; blocked = true; }
+        if (resultX > mapBoundary) { resultX = mapBoundary; blocked = true; }
+        if (resultZ < -mapBoundary) { resultZ = -mapBoundary; blocked = true; }
+        if (resultZ > mapBoundary) { resultZ = mapBoundary; blocked = true; }
+        
+        // 多次迭代解决碰撞（处理多个墙壁同时碰撞的情况）
+        for (let iteration = 0; iteration < 4; iteration++) {
+            let maxPenetration = 0;
+            let bestPushX = 0, bestPushZ = 0;
+            
+            for (const wall of this.walls) {
+                const wallHeight = wall.h || 20;
+                const playerFeetHeight = playerHeight - this.standingHeight;
+                
+                // 如果玩家脚底高于障碍物，跳过碰撞但检查是否站在上面
+                if (playerFeetHeight >= wallHeight - 0.5) {
+                    let isAboveWall = false;
+                    if (wall.rotation && wall.rotation !== 0) {
+                        const hw = (wall.originalW || wall.w) / 2;
+                        const hd = (wall.originalD || wall.d) / 2;
+                        const cx = wall.centerX !== undefined ? wall.centerX : (wall.x + wall.w / 2);
+                        const cz = wall.centerZ !== undefined ? wall.centerZ : (wall.z + wall.d / 2);
+                        const result = this.checkRotatedRectCollision(resultX, resultZ, cx, cz, hw, hd, wall.rotation);
+                        isAboveWall = result.isInside;
+                    } else {
+                        const wx = wall.x, wz = wall.z, ww = wall.w, wd = wall.d;
+                        isAboveWall = resultX >= wx && resultX <= wx + ww && resultZ >= wz && resultZ <= wz + wd;
+                    }
+                    if (isAboveWall && wallHeight <= maxJumpHeight) {
+                        standingOnHeight = Math.max(standingOnHeight, wallHeight);
+                    }
+                    continue;
+                }
+                
+                if (wall.rotation && wall.rotation !== 0) {
+                    // 旋转墙壁使用OBB碰撞检测
+                    const hw = (wall.originalW || wall.w) / 2;
+                    const hd = (wall.originalD || wall.d) / 2;
+                    const cx = wall.centerX !== undefined ? wall.centerX : (wall.x + wall.w / 2);
+                    const cz = wall.centerZ !== undefined ? wall.centerZ : (wall.z + wall.d / 2);
+                    
+                    const result = this.checkRotatedRectCollision(resultX, resultZ, cx, cz, hw, hd, wall.rotation);
+                    
+                    if (result.isInside) {
+                        // 玩家在墙内
+                        const penetration = result.penetration + playerRadius;
+                        if (penetration > maxPenetration) {
+                            maxPenetration = penetration;
+                            bestPushX = result.pushX * penetration;
+                            bestPushZ = result.pushZ * penetration;
+                        }
+                        blocked = true;
+                    } else if (result.dist < playerRadius) {
+                        // 玩家靠近墙壁
+                        const penetration = playerRadius - result.dist;
+                        if (penetration > maxPenetration) {
+                            maxPenetration = penetration;
+                            bestPushX = result.pushX * penetration;
+                            bestPushZ = result.pushZ * penetration;
+                        }
+                        blocked = true;
+                    }
+                } else {
+                    // 非旋转墙壁使用AABB检测
+                    const wx = wall.x, wz = wall.z, ww = wall.w, wd = wall.d;
+                    const closestX = Math.max(wx, Math.min(resultX, wx + ww));
+                    const closestZ = Math.max(wz, Math.min(resultZ, wz + wd));
+                    const distX = resultX - closestX;
+                    const distZ = resultZ - closestZ;
+                    const dist = Math.sqrt(distX * distX + distZ * distZ);
+                    
+                    if (dist < playerRadius) {
+                        blocked = true;
+                        const penetration = playerRadius - dist;
+                        if (penetration > maxPenetration) {
+                            maxPenetration = penetration;
+                            if (dist > 0.01) {
+                                bestPushX = (distX / dist) * penetration;
+                                bestPushZ = (distZ / dist) * penetration;
+                            } else {
+                                // 在墙内，推向最近的边
+                                const toLeft = resultX - wx;
+                                const toRight = wx + ww - resultX;
+                                const toBack = resultZ - wz;
+                                const toFront = wz + wd - resultZ;
+                                const minDist = Math.min(toLeft, toRight, toBack, toFront);
+                                if (minDist === toLeft) { bestPushX = -(playerRadius + toLeft); bestPushZ = 0; }
+                                else if (minDist === toRight) { bestPushX = playerRadius + toRight; bestPushZ = 0; }
+                                else if (minDist === toBack) { bestPushX = 0; bestPushZ = -(playerRadius + toBack); }
+                                else { bestPushX = 0; bestPushZ = playerRadius + toFront; }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // 应用最大穿透的推力
+            if (maxPenetration > 0.01) {
+                resultX += bestPushX;
+                resultZ += bestPushZ;
+            } else {
+                break; // 没有碰撞，退出迭代
+            }
         }
         
-        for (const wall of this.walls) {
-            const wx = wall.x, wz = wall.z, ww = wall.w, wd = wall.d;
-            const wallHeight = wall.h || 20;
-            const closestX = Math.max(wx, Math.min(clampedX, wx + ww));
-            const closestZ = Math.max(wz, Math.min(clampedZ, wz + wd));
-            const distX = clampedX - closestX;
-            const distZ = clampedZ - closestZ;
-            const dist = Math.sqrt(distX * distX + distZ * distZ);
-            
-            // 检查是否在障碍物上方（水平位置在障碍物范围内）
-            const isAboveWall = clampedX >= wx && clampedX <= wx + ww && clampedZ >= wz && clampedZ <= wz + wd;
-            
-            // 如果玩家在障碍物上方，且障碍物高度在可跳跃范围内，且玩家高度足够
-            // 玩家脚底高度 = playerHeight - standingHeight
-            const playerFeetHeight = playerHeight - this.standingHeight;
-            if (isAboveWall && wallHeight <= maxJumpHeight && playerFeetHeight >= wallHeight - 1) {
-                standingOnHeight = Math.max(standingOnHeight, wallHeight);
-            }
-            
-            // 碰撞检测：只有当玩家脚底低于障碍物顶部时才阻挡
-            const heightsToCheck = [this.standingHeight, this.crouchingHeight];
-            let shouldBlock = false;
-            for (const checkH of heightsToCheck) {
-                // 玩家脚底高度低于障碍物顶部时才会被阻挡
-                if (dist < playerRadius && playerFeetHeight < wallHeight) {
-                    shouldBlock = true;
-                    break;
-                }
-            }
-            
-            if (shouldBlock) {
-                blocked = true;
-                if (dist > 0.01) {
-                    const overlap = playerRadius - dist;
-                    pushX += (distX / dist) * overlap;
-                    pushZ += (distZ / dist) * overlap;
-                }
-            }
-        }
-        return { blocked, pushX, pushZ, clampedX, clampedZ, standingOnHeight };
+        // 再次检查边界
+        resultX = Math.max(-mapBoundary, Math.min(mapBoundary, resultX));
+        resultZ = Math.max(-mapBoundary, Math.min(mapBoundary, resultZ));
+        
+        const pushX = resultX - newX;
+        const pushZ = resultZ - newZ;
+        
+        return { blocked, pushX, pushZ, clampedX: resultX, clampedZ: resultZ, standingOnHeight };
     }
     
     canCrouchAt(x, z) {
         const playerRadius = 2.5;
         for (const wall of this.walls) {
-            const wx = wall.x, wz = wall.z, ww = wall.w, wd = wall.d;
             const wallHeight = wall.h || 20;
-            const closestX = Math.max(wx, Math.min(x, wx + ww));
-            const closestZ = Math.max(wz, Math.min(z, wz + wd));
-            const distX = x - closestX;
-            const distZ = z - closestZ;
-            const dist = Math.sqrt(distX * distX + distZ * distZ);
+            let dist;
+            
+            if (wall.rotation && wall.rotation !== 0) {
+                // 旋转墙壁使用OBB检测
+                const hw = (wall.originalW || wall.w) / 2;
+                const hd = (wall.originalD || wall.d) / 2;
+                const cx = wall.centerX !== undefined ? wall.centerX : (wall.x + wall.w / 2);
+                const cz = wall.centerZ !== undefined ? wall.centerZ : (wall.z + wall.d / 2);
+                const result = this.checkRotatedRectCollision(x, z, cx, cz, hw, hd, wall.rotation);
+                dist = result.isInside ? -result.penetration : result.dist;
+            } else {
+                // 非旋转墙壁使用AABB检测
+                const wx = wall.x, wz = wall.z, ww = wall.w, wd = wall.d;
+                const closestX = Math.max(wx, Math.min(x, wx + ww));
+                const closestZ = Math.max(wz, Math.min(z, wz + wd));
+                const distX = x - closestX;
+                const distZ = z - closestZ;
+                dist = Math.sqrt(distX * distX + distZ * distZ);
+            }
+            
             if (dist < playerRadius && this.crouchingHeight < wallHeight && this.standingHeight >= wallHeight) return false;
         }
         return true;
@@ -2978,9 +3160,9 @@ class PixelCS3D {
             let newZ = this.camera.position.z + moveZ;
             const collision = this.checkCollision(newX, newZ);
             if (collision.blocked) {
-                // 使用碰撞检测返回的clampedX/Z，不需要额外的边界限制
-                newX = collision.clampedX + collision.pushX;
-                newZ = collision.clampedZ + collision.pushZ;
+                // 使用碰撞检测返回的clampedX/Z作为最终位置
+                newX = collision.clampedX;
+                newZ = collision.clampedZ;
             }
             this.currentStandingHeight = collision.standingOnHeight || 0;
             this.camera.position.x = newX;

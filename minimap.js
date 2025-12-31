@@ -71,21 +71,37 @@ class Minimap {
         ctx.lineWidth = 2;
         ctx.strokeRect(0, 0, this.size, this.size);
         
-        // 绘制障碍物（固定位置）
-        ctx.fillStyle = 'rgba(139, 115, 85, 0.6)';
-        ctx.strokeStyle = 'rgba(139, 115, 85, 0.8)';
-        ctx.lineWidth = 1;
-        
         const mapSize = this.getMapSize();
         const scale = this.size / (mapSize * 2);
         
-        if (mapConfig.obstacles) {
+        // 绘制边界墙（细线表示）
+        ctx.fillStyle = 'rgba(85, 85, 85, 0.6)';
+        ctx.strokeStyle = 'rgba(100, 100, 100, 0.8)';
+        ctx.lineWidth = 2;
+        
+        // 绘制边界框
+        const margin = 2;
+        ctx.strokeRect(margin, margin, this.size - margin * 2, this.size - margin * 2);
+        
+        // 绘制障碍物 - 使用地图配置中的原始数据
+        ctx.fillStyle = 'rgba(139, 115, 85, 0.7)';
+        ctx.lineWidth = 1;
+        
+        // 使用地图配置中的障碍物数据（更准确）
+        if (mapConfig.obstacles && mapConfig.obstacles.length > 0) {
             mapConfig.obstacles.forEach(o => {
                 const pos = this.worldToMinimap(o.x, o.z);
-                const w = o.w * scale;
-                const d = o.d * scale;
-                ctx.fillRect(pos.x - w/2, pos.y - d/2, w, d);
-                ctx.strokeRect(pos.x - w/2, pos.y - d/2, w, d);
+                // 使用原始尺寸，不要扩大
+                const w = Math.max(1, o.w * scale);
+                const d = Math.max(1, o.d * scale);
+                
+                ctx.save();
+                ctx.translate(pos.x, pos.y);
+                if (o.rotation) {
+                    ctx.rotate(o.rotation);
+                }
+                ctx.fillRect(-w/2, -d/2, w, d);
+                ctx.restore();
             });
         }
         
