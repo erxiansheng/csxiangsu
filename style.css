@@ -179,7 +179,7 @@ body {
 }
 
 .announcement-content {
-    max-height: 400px;
+    max-height: 550px;
     overflow-y: auto;
 }
 
