@@ -48,39 +48,82 @@ class MapEditor {
         // 纹理缓存
         this.textures = {};
         
-        // 物件类型配置
+        // 物件类型配置 - textureType 与游戏内 maps.js 保持一致
         this.objectTypes = {
-            floor: { w: 40, h: 1, d: 40, color: 0x7f8c8d, collision: false, textureType: 'concrete' },
+            floor: { w: 40, h: 1, d: 40, color: 0x8b7355, collision: false, textureType: 'floor' },
             wall: { w: 40, h: 20, d: 2, color: 0x95a5a6, collision: true, textureType: 'brick' },
-            box: { w: 8, h: 8, d: 8, color: 0x8b7355, collision: true, textureType: 'metal' },
+            box: { w: 8, h: 8, d: 8, color: 0x5a5a5a, collision: true, textureType: 'metal' },
             crate: { w: 10, h: 10, d: 10, color: 0xa0522d, collision: true, textureType: 'wood' },
-            door: { w: 8, h: 16, d: 2, color: 0x5d4e37, collision: true, textureType: 'woodDoor' },
+            door: { w: 8, h: 16, d: 2, color: 0x5d4e37, collision: true, textureType: 'wood' },
             bombsite_a: { w: 40, h: 0.5, d: 40, color: 0xe74c3c, collision: false, transparent: true },
             bombsite_b: { w: 40, h: 0.5, d: 40, color: 0x3498db, collision: false, transparent: true },
             spawn_ct: { w: 3, h: 15, d: 3, color: 0x2980b9, collision: false },
-            spawn_t: { w: 3, h: 15, d: 3, color: 0xc0392b, collision: false },
-            barrel: { w: 5, h: 8, d: 5, color: 0x2c3e50, collision: true, isCylinder: true, textureType: 'barrel' },
-            sandbag: { w: 12, h: 5, d: 6, color: 0xbdc3c7, collision: true, textureType: 'sandbag' },
-            graffiti: { w: 10, h: 10, d: 0.2, color: 0xe74c3c, collision: false, textureType: 'graffiti' },
-            light: { w: 2, h: 2, d: 2, color: 0xf1c40f, collision: false, isLight: true }
+            spawn_t: { w: 3, h: 15, d: 3, color: 0xc0392b, collision: false }
         };
         
         this.initTextures();
         this.init();
     }
     
-    // 初始化程序化纹理
+    // 初始化程序化纹理 - 与游戏内 maps.js 保持一致
     initTextures() {
         this.textures = {
             wood: this.createWoodTexture(),
             brick: this.createBrickTexture(),
             concrete: this.createConcreteTexture(),
             metal: this.createMetalTexture(),
-            woodDoor: this.createWoodDoorTexture(),
-            barrel: this.createBarrelTexture(),
-            sandbag: this.createSandbagTexture(),
-            graffiti: this.createGraffitiTexture()
+            floor: this.createFloorTexture()
         };
+    }
+    
+    // 创建地板纹理 - 与游戏内 maps.js 保持一致
+    createFloorTexture(color1 = '#8b7355', color2 = '#7a6245') {
+        const canvas = document.createElement('canvas');
+        canvas.width = 64;
+        canvas.height = 64;
+        const ctx = canvas.getContext('2d');
+        
+        // 基础颜色
+        ctx.fillStyle = color1;
+        ctx.fillRect(0, 0, 64, 64);
+        
+        // 添加格子纹理
+        ctx.fillStyle = color2;
+        for (let i = 0; i < 4; i++) {
+            for (let j = 0; j < 4; j++) {
+                if ((i + j) % 2 === 0) {
+                    ctx.fillRect(i * 16, j * 16, 16, 16);
+                }
+            }
+        }
+        
+        // 添加细微的噪点纹理
+        ctx.fillStyle = 'rgba(0,0,0,0.05)';
+        for (let i = 0; i < 100; i++) {
+            const x = Math.random() * 64;
+            const y = Math.random() * 64;
+            ctx.fillRect(x, y, 1, 1);
+        }
+        
+        // 添加格子线条
+        ctx.strokeStyle = 'rgba(0,0,0,0.1)';
+        ctx.lineWidth = 1;
+        for (let i = 0; i <= 4; i++) {
+            ctx.beginPath();
+            ctx.moveTo(i * 16, 0);
+            ctx.lineTo(i * 16, 64);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(0, i * 16);
+            ctx.lineTo(64, i * 16);
+            ctx.stroke();
+        }
+        
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        texture.repeat.set(6, 6);
+        return texture;
     }
     
     // 创建木纹纹理 - 与项目maps.js保持一致
@@ -622,6 +665,18 @@ class MapEditor {
         document.getElementById('copy-code').addEventListener('click', () => this.copyCode());
         document.getElementById('close-modal').addEventListener('click', () => this.closeModal());
         
+        // 云存储按钮
+        document.getElementById('cloudSave').addEventListener('click', () => this.showCloudSaveModal());
+        document.getElementById('cloudLoad').addEventListener('click', () => this.showCloudModal());
+        
+        // 云端地图弹窗
+        document.getElementById('cloud-refresh').addEventListener('click', () => this.loadCloudMapList());
+        document.getElementById('close-cloud-modal').addEventListener('click', () => this.closeCloudModal());
+        
+        // 云端保存弹窗
+        document.getElementById('confirm-cloud-save').addEventListener('click', () => this.confirmCloudSave());
+        document.getElementById('close-cloud-save-modal').addEventListener('click', () => this.closeCloudSaveModal());
+        
         // 地图大小变化
         document.getElementById('mapSize').addEventListener('change', (e) => this.updateMapSize(parseInt(e.target.value) || 300));
     }
@@ -859,24 +914,40 @@ class MapEditor {
         
         // 根据类型选择纹理
         const textureType = config.textureType;
-        if (textureType && this.textures[textureType] && !isPreview) {
-            const texture = this.textures[textureType].clone();
-            texture.needsUpdate = true;
+        if (textureType && !isPreview) {
+            let texture;
             
-            // 根据物件大小调整纹理重复
-            if (textureType === 'brick' || textureType === 'concrete') {
-                texture.repeat.set(config.w / 20, config.h / 10);
-            } else if (textureType === 'wood') {
-                texture.repeat.set(config.w / 10, config.d / 10);
+            // 地板纹理需要根据颜色动态生成
+            if (textureType === 'floor') {
+                const r = (config.color >> 16) & 0xff;
+                const g = (config.color >> 8) & 0xff;
+                const b = config.color & 0xff;
+                const color1 = `rgb(${r},${g},${b})`;
+                const color2 = `rgb(${Math.floor(r * 0.87)},${Math.floor(g * 0.87)},${Math.floor(b * 0.87)})`;
+                texture = this.createFloorTexture(color1, color2);
+                texture.repeat.set(config.w / 8, config.d / 8);
+            } else if (this.textures[textureType]) {
+                texture = this.textures[textureType].clone();
+                texture.needsUpdate = true;
+                
+                // 根据物件大小调整纹理重复
+                if (textureType === 'brick' || textureType === 'concrete') {
+                    texture.repeat.set(config.w / 20, config.h / 10);
+                } else if (textureType === 'wood') {
+                    texture.repeat.set(config.w / 10, config.d / 10);
+                }
             }
             
-            material = new THREE.MeshLambertMaterial({ 
-                map: texture,
-                color: config.color,
-                transparent: config.transparent || false,
-                opacity: config.transparent ? 0.4 : 1
-            });
-        } else {
+            if (texture) {
+                material = new THREE.MeshLambertMaterial({ 
+                    map: texture,
+                    transparent: config.transparent || false,
+                    opacity: config.transparent ? 0.4 : 1
+                });
+            }
+        }
+        
+        if (!material) {
             material = new THREE.MeshLambertMaterial({ 
                 color: config.color,
                 transparent: config.transparent || false,
@@ -1312,8 +1383,7 @@ class MapEditor {
         const names = {
             floor: '地板', wall: '墙面', box: '箱子', crate: '木箱',
             door: '门', bombsite_a: 'A点', bombsite_b: 'B点',
-            spawn_ct: 'CT复活点', spawn_t: 'T复活点', barrel: '油桶',
-            sandbag: '沙袋', graffiti: '涂鸦', light: '灯光'
+            spawn_ct: 'CT复活点', spawn_t: 'T复活点'
         };
         return names[type] || type;
     }
@@ -1548,8 +1618,8 @@ class MapEditor {
                 item.rotation = parseFloat(obj.rotation.y.toFixed(3));
             }
             
-            // 添加颜色
-            if (data.color !== this.objectTypes[data.type]?.color) {
+            // 添加颜色（地板始终导出颜色）
+            if (data.type === 'floor' || data.color !== this.objectTypes[data.type]?.color) {
                 item.color = data.color;
             }
             
@@ -1567,10 +1637,15 @@ class MapEditor {
                     spawnsT.push({ x: item.x, z: item.z });
                     break;
                 case 'floor':
-                    // 地板不加入obstacles
+                    // 地板也加入obstacles，带textureType
+                    item.textureType = 'floor';
+                    obstacles.push(item);
                     break;
                 default:
-                    // 所有其他物件都加入obstacles
+                    // 所有其他物件都加入obstacles，带textureType（如果有）
+                    if (data.textureType) {
+                        item.textureType = data.textureType;
+                    }
                     obstacles.push(item);
             }
         });
@@ -1628,6 +1703,7 @@ class MapEditor {
             parts.push(`d: ${item.d}`);
             if (item.color !== undefined) parts.push(`color: 0x${item.color.toString(16).padStart(6, '0')}`);
             if (item.rotation !== undefined) parts.push(`rotation: ${item.rotation}`);
+            if (item.textureType !== undefined) parts.push(`textureType: '${item.textureType}'`);
             return `{${parts.join(', ')}}`;
         });
         
@@ -1946,6 +2022,225 @@ class MapEditor {
         }
         
         this.renderer.render(this.scene, this.camera);
+    }
+    
+    // ========== 云存储功能 ==========
+    
+    // 获取当前地图数据（复用saveMapAsJson的逻辑）
+    getMapData() {
+        const mapName = document.getElementById('mapName').value || 'custom_map';
+        const mapDisplayName = document.getElementById('mapDisplayName').value || '自定义地图';
+        const mapSize = parseInt(document.getElementById('mapSize').value) || 300;
+        
+        const gameModeSelect = document.getElementById('gameMode');
+        const selectedModes = Array.from(gameModeSelect.selectedOptions).map(opt => opt.value);
+        const gameMode = selectedModes.length > 0 ? selectedModes : ['deathmatch'];
+        
+        const mapData = {
+            name: mapName,
+            displayName: mapDisplayName,
+            gameMode: gameMode,
+            mapSize: mapSize,
+            floorColor1: '#8b7355',
+            floorColor2: '#7a6245',
+            wallColor1: '#95a5a6',
+            wallColor2: '#7f8c8d',
+            skyColor: 0x6bb3d9,
+            objects: [],
+            bombSites: {},
+            spawnPoints: { ct: [], t: [] }
+        };
+        
+        const spawnsCT = [];
+        const spawnsT = [];
+        let bombSiteA = null;
+        let bombSiteB = null;
+        
+        this.objects.forEach(obj => {
+            const data = obj.userData;
+            const item = {
+                type: data.type,
+                x: Math.round(obj.position.x),
+                y: Math.round(obj.position.y),
+                z: Math.round(obj.position.z),
+                w: data.w,
+                h: data.h,
+                d: data.d,
+                color: data.color,
+                textureType: data.textureType
+            };
+            
+            if (obj.rotation.y !== 0) {
+                item.rotation = parseFloat(obj.rotation.y.toFixed(3));
+            }
+            
+            mapData.objects.push(item);
+            
+            switch(data.type) {
+                case 'bombsite_a':
+                    bombSiteA = { x: item.x, z: item.z, radius: Math.max(item.w, item.d) / 2 };
+                    break;
+                case 'bombsite_b':
+                    bombSiteB = { x: item.x, z: item.z, radius: Math.max(item.w, item.d) / 2 };
+                    break;
+                case 'spawn_ct':
+                    spawnsCT.push({ x: item.x, z: item.z });
+                    break;
+                case 'spawn_t':
+                    spawnsT.push({ x: item.x, z: item.z });
+                    break;
+            }
+        });
+        
+        if (bombSiteA) mapData.bombSites.A = bombSiteA;
+        if (bombSiteB) mapData.bombSites.B = bombSiteB;
+        mapData.spawnPoints = { ct: spawnsCT, t: spawnsT };
+        
+        return mapData;
+    }
+    
+    // 显示云端保存确认弹窗
+    showCloudSaveModal() {
+        const mapData = this.getMapData();
+        document.getElementById('cloud-save-id').textContent = mapData.name;
+        document.getElementById('cloud-save-name').textContent = mapData.displayName;
+        document.getElementById('cloud-save-count').textContent = this.objects.length + ' 个';
+        document.getElementById('cloud-save-status').style.display = 'none';
+        document.getElementById('cloud-save-modal').classList.add('active');
+    }
+    
+    // 关闭云端保存弹窗
+    closeCloudSaveModal() {
+        document.getElementById('cloud-save-modal').classList.remove('active');
+    }
+    
+    // 确认保存到云端
+    async confirmCloudSave() {
+        const statusEl = document.getElementById('cloud-save-status');
+        const confirmBtn = document.getElementById('confirm-cloud-save');
+        
+        statusEl.textContent = '正在保存...';
+        statusEl.className = 'cloud-status';
+        statusEl.style.display = 'block';
+        confirmBtn.disabled = true;
+        
+        try {
+            const mapData = this.getMapData();
+            const result = await MapCloudService.saveMap(mapData);
+            
+            statusEl.textContent = '✓ 保存成功！';
+            statusEl.className = 'cloud-status success';
+            
+            setTimeout(() => {
+                this.closeCloudSaveModal();
+            }, 1000);
+        } catch (err) {
+            statusEl.textContent = '✗ ' + err.message;
+            statusEl.className = 'cloud-status error';
+        } finally {
+            confirmBtn.disabled = false;
+        }
+    }
+    
+    // 显示云端地图列表弹窗
+    showCloudModal() {
+        document.getElementById('cloud-modal').classList.add('active');
+        this.loadCloudMapList();
+    }
+    
+    // 关闭云端地图弹窗
+    closeCloudModal() {
+        document.getElementById('cloud-modal').classList.remove('active');
+    }
+    
+    // 加载云端地图列表
+    async loadCloudMapList() {
+        const loadingEl = document.getElementById('cloud-loading');
+        const errorEl = document.getElementById('cloud-error');
+        const emptyEl = document.getElementById('cloud-empty');
+        const listEl = document.getElementById('cloud-list');
+        
+        loadingEl.style.display = 'block';
+        errorEl.style.display = 'none';
+        emptyEl.style.display = 'none';
+        listEl.innerHTML = '';
+        
+        try {
+            const maps = await MapCloudService.listMaps();
+            loadingEl.style.display = 'none';
+            
+            if (maps.length === 0) {
+                emptyEl.style.display = 'block';
+                return;
+            }
+            
+            maps.forEach(map => {
+                const item = document.createElement('div');
+                item.className = 'cloud-map-item';
+                
+                const timeStr = map.updatedAt ? new Date(map.updatedAt).toLocaleString('zh-CN') : '';
+                
+                item.innerHTML = `
+                    <div class="cloud-map-info">
+                        <div class="cloud-map-name">${this.escapeHtml(map.displayName || map.name)}</div>
+                        <div class="cloud-map-id">${this.escapeHtml(map.id)}</div>
+                        ${timeStr ? `<div class="cloud-map-time">${timeStr}</div>` : ''}
+                    </div>
+                    <div class="cloud-map-actions">
+                        <button class="tool-btn primary cloud-load-btn" data-id="${this.escapeHtml(map.id)}">加载</button>
+                        <button class="tool-btn danger cloud-delete-btn" data-id="${this.escapeHtml(map.id)}">删除</button>
+                    </div>
+                `;
+                
+                listEl.appendChild(item);
+            });
+            
+            // 绑定加载和删除按钮事件
+            listEl.querySelectorAll('.cloud-load-btn').forEach(btn => {
+                btn.addEventListener('click', () => this.loadCloudMap(btn.dataset.id));
+            });
+            
+            listEl.querySelectorAll('.cloud-delete-btn').forEach(btn => {
+                btn.addEventListener('click', () => this.deleteCloudMap(btn.dataset.id));
+            });
+            
+        } catch (err) {
+            loadingEl.style.display = 'none';
+            errorEl.textContent = err.message;
+            errorEl.style.display = 'block';
+        }
+    }
+    
+    // 加载云端地图
+    async loadCloudMap(mapId) {
+        try {
+            const mapData = await MapCloudService.getMap(mapId);
+            this.loadMapData(mapData);
+            this.closeCloudModal();
+        } catch (err) {
+            alert('加载失败: ' + err.message);
+        }
+    }
+    
+    // 删除云端地图
+    async deleteCloudMap(mapId) {
+        if (!confirm(`确定要删除地图 "${mapId}" 吗？此操作不可恢复。`)) {
+            return;
+        }
+        
+        try {
+            await MapCloudService.deleteMap(mapId);
+            this.loadCloudMapList(); // 刷新列表
+        } catch (err) {
+            alert('删除失败: ' + err.message);
+        }
+    }
+    
+    // HTML转义
+    escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
     }
 }
 

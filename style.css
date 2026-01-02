@@ -414,7 +414,7 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    background: radial-gradient(circle, transparent 20%, rgba(0,0,0,0.95) 21%);
+    background: radial-gradient(circle, transparent 28%, rgba(0,0,0,0.95) 29%);
     pointer-events: none;
     z-index: 99;
 }
@@ -1564,6 +1564,34 @@ body {
 #mobile-buy { grid-column: 1; grid-row: 3; }
 #mobile-settings { grid-column: 3; grid-row: 1; font-size: 20px; }
 
+/* 拆包按钮 - 屏幕中央显示 */
+.mobile-btn.defuse-btn {
+    position: absolute;
+    left: 50%;
+    top: 40%;
+    transform: translate(-50%, -50%);
+    width: 80px;
+    height: 80px;
+    background: rgba(0, 200, 0, 0.6);
+    border: 3px solid rgba(0, 255, 0, 0.8);
+    color: #fff;
+    font-size: 16px;
+    font-weight: bold;
+    border-radius: 50%;
+    z-index: 600;
+    animation: defuse-pulse 1s infinite;
+}
+
+.mobile-btn.defuse-btn:active {
+    background: rgba(0, 255, 0, 0.8);
+    transform: translate(-50%, -50%) scale(0.95);
+}
+
+@keyframes defuse-pulse {
+    0%, 100% { box-shadow: 0 0 10px rgba(0, 255, 0, 0.5); }
+    50% { box-shadow: 0 0 25px rgba(0, 255, 0, 0.8); }
+}
+
 /* 武器快捷栏 */
 #mobile-weapon-bar {
     position: absolute;
@@ -1734,6 +1762,11 @@ body {
     .team-score {
         font-size: 12px !important;
         padding: 3px 8px !important;
+    }
+    
+    /* 手机端开镜圆圈更大 */
+    #scope {
+        background: radial-gradient(circle, transparent 35%, rgba(0,0,0,0.95) 36%);
     }
     
     /* 调整菜单适配 */
@@ -1987,4 +2020,219 @@ body {
     #rotate-screen-hint {
         display: none !important;
     }
+}
+
+
+/* 重连覆盖层 */
+#reconnect-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.9);
+    z-index: 10001;
+    justify-content: center;
+    align-items: center;
+}
+
+.reconnect-content {
+    text-align: center;
+    color: white;
+}
+
+.reconnect-spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid #333;
+    border-top: 4px solid #e94560;
+    border-radius: 50%;
+    margin: 0 auto 20px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.reconnect-text {
+    font-size: 20px;
+    margin-bottom: 10px;
+    color: #e94560;
+}
+
+.reconnect-attempt {
+    font-size: 14px;
+    color: #888;
+}
+
+.reconnect-attempt button {
+    margin-top: 15px;
+    padding: 10px 30px;
+    background: #e94560;
+    color: white;
+    border: none;
+    font-size: 16px;
+    cursor: pointer;
+    border-radius: 5px;
+}
+
+.reconnect-attempt button:hover {
+    background: #ff6b8a;
+}
+
+
+/* 连接中覆盖层 */
+#connecting-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 10001;
+    justify-content: center;
+    align-items: center;
+}
+
+.connecting-content {
+    text-align: center;
+    color: white;
+}
+
+.connecting-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid #333;
+    border-top: 3px solid #4ade80;
+    border-radius: 50%;
+    margin: 0 auto 15px;
+    animation: spin 1s linear infinite;
+}
+
+.connecting-text {
+    font-size: 18px;
+    color: #4ade80;
+}
+
+/* 菜单错误提示 */
+#menu-error {
+    display: none;
+    background: rgba(255, 0, 0, 0.2);
+    border: 2px solid #ff4444;
+    color: #ff6b6b;
+    padding: 10px 15px;
+    margin-top: 15px;
+    text-align: center;
+    font-size: 14px;
+    border-radius: 5px;
+    animation: shake 0.3s ease-in-out;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+
+/* 云端地图相关样式 */
+.custom-map-options {
+    display: flex;
+    gap: 10px;
+}
+
+.custom-map-options .pixel-btn {
+    flex: 1;
+}
+
+/* 云端地图弹窗 */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+}
+
+.modal-box {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border: 2px solid #e94560;
+    border-radius: 10px;
+    padding: 25px;
+    width: 450px;
+    max-height: 80vh;
+    box-shadow: 0 10px 40px rgba(233, 69, 96, 0.3);
+}
+
+.modal-box h3 {
+    color: #e94560;
+    margin-bottom: 15px;
+    font-size: 20px;
+    text-align: center;
+}
+
+.modal-status {
+    padding: 20px;
+    text-align: center;
+    color: #888;
+}
+
+.modal-status.error {
+    color: #e74c3c;
+}
+
+.cloud-map-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.cloud-map-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 15px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.cloud-map-item:hover {
+    background: rgba(233, 69, 96, 0.2);
+    transform: translateX(5px);
+}
+
+.cloud-map-item-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.cloud-map-item-name {
+    font-size: 15px;
+    font-weight: bold;
+    color: #eee;
+    margin-bottom: 4px;
+}
+
+.cloud-map-item-id {
+    font-size: 12px;
+    color: #888;
+    font-family: monospace;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+    justify-content: center;
 }

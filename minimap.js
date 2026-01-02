@@ -7,6 +7,9 @@ class Minimap {
         this.ctx = null;
         this.size = 180;
         this.playerSize = 6;
+        this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) 
+            || ('ontouchstart' in window) 
+            || (navigator.maxTouchPoints > 0);
         this.init();
     }
     
@@ -25,6 +28,15 @@ class Minimap {
         
         this.canvas = document.getElementById('minimap-canvas');
         this.ctx = this.canvas.getContext('2d');
+    }
+    
+    // 获取小地图实际显示尺寸（手机端可能被CSS缩小）
+    getDisplaySize() {
+        if (this.isMobile) {
+            // 手机端小地图被CSS缩小到120px
+            return 120;
+        }
+        return this.size;
     }
     
     // 获取当前地图大小
@@ -119,13 +131,14 @@ class Minimap {
                 ctx.arc(posA.x, posA.y, radius, 0, Math.PI * 2);
                 ctx.fill();
                 
-                // 更新A点标签位置
-                const labelA = document.getElementById('minimap-site-a');
-                if (labelA) {
-                    labelA.style.left = (posA.x - 8) + 'px';
-                    labelA.style.top = (posA.y - 8) + 'px';
-                    labelA.style.display = 'block';
-                }
+                // 直接在canvas上绘制A标签
+                ctx.globalAlpha = 1;
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 16px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('A', posA.x, posA.y);
+                ctx.globalAlpha = 0.3 + Math.sin(Date.now() / 500) * 0.1;
             }
             
             // B点
@@ -138,16 +151,23 @@ class Minimap {
                 ctx.arc(posB.x, posB.y, radius, 0, Math.PI * 2);
                 ctx.fill();
                 
-                // 更新B点标签位置
-                const labelB = document.getElementById('minimap-site-b');
-                if (labelB) {
-                    labelB.style.left = (posB.x - 8) + 'px';
-                    labelB.style.top = (posB.y - 8) + 'px';
-                    labelB.style.display = 'block';
-                }
+                // 直接在canvas上绘制B标签
+                ctx.globalAlpha = 1;
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 16px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('B', posB.x, posB.y);
+                ctx.globalAlpha = 0.3 + Math.sin(Date.now() / 500) * 0.1;
             }
             
             ctx.globalAlpha = 1;
+            
+            // 隐藏HTML标签（改用canvas绘制）
+            const labelA = document.getElementById('minimap-site-a');
+            const labelB = document.getElementById('minimap-site-b');
+            if (labelA) labelA.style.display = 'none';
+            if (labelB) labelB.style.display = 'none';
         } else {
             // 非爆破模式隐藏包点标签
             const labelA = document.getElementById('minimap-site-a');

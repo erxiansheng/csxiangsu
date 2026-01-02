@@ -3,6 +3,7 @@
 // ==================== 服务器配置 ====================
 // 默认服务器地址，可在页面上配置覆盖
 const DEFAULT_WS_SERVER_URL = 'wss://cs16xs.188np.cn';
+// const DEFAULT_WS_SERVER_URL = 'ws://192.168.31.134:8765';
 // 从localStorage读取自定义服务器地址，如果没有则使用默认地址
 let WS_SERVER_URL = localStorage.getItem('cs_server_url') || DEFAULT_WS_SERVER_URL;
 // ===================================================
@@ -74,8 +75,8 @@ class PixelCS3D {
         this.isScoped = false;
         this.scopeLevel = 0; // 0=无开镜, 1=一倍镜, 2=二倍镜
         this.normalFOV = 75;
-        this.scopedFOV1 = 30;  // 一倍镜FOV
-        this.scopedFOV2 = 15;  // 二倍镜FOV
+        this.scopedFOV1 = 20;  // 一倍镜FOV（更大放大）
+        this.scopedFOV2 = 8;   // 二倍镜FOV（更大放大）
         this.buyMenuOpen = false;
         this.settingsMenuOpen = false;
         this.respawnTimer = null;
@@ -134,10 +135,39 @@ class PixelCS3D {
         this.spectatingPlayerId = null;
         this.spectatorTargets = [];
         
+        // WebSocket重连相关
+        this.reconnectAttempts = 0;
+        this.maxReconnectAttempts = 5;
+        this.reconnectDelay = 1000;
+        this.isReconnecting = false;
+        this.connectionInfo = null; // 保存连接信息用于重连
+        
         this.audio = new AudioSystem();
         this.weaponBuilder = null;
         
         this.setupEventListeners();
+        this.setupVisibilityHandler();
+    }
+    
+    // 处理页面可见性变化
+    setupVisibilityHandler() {
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                // 页面重新可见时检查连接状态
+                if (this.ws && this.ws.readyState !== WebSocket.OPEN && this.connectionInfo) {
+                    console.log('页面恢复可见，检测到连接断开，尝试重连...');
+                    this.attemptReconnect();
+                }
+            }
+        });
+        
+        // 监听网络状态变化
+        window.addEventListener('online', () => {
+            if (this.ws && this.ws.readyState !== WebSocket.OPEN && this.connectionInfo) {
+                console.log('网络恢复，尝试重连...');
+                this.attemptReconnect();
+            }
+        });
     }
 
     setupEventListeners() {
@@ -160,8 +190,13 @@ class PixelCS3D {
         document.addEventListener('mouseup', (e) => this.onMouseUp(e));
         document.addEventListener('contextmenu', (e) => e.preventDefault());
         document.addEventListener('pointerlockchange', () => {
-            this.isLocked = document.pointerLockElement !== null;
-            if (!this.isLocked) this.isFiring = false;
+            // 手机端始终保持锁定状态
+            if (this.isMobile) {
+                this.isLocked = true;
+            } else {
+                this.isLocked = document.pointerLockElement !== null;
+                if (!this.isLocked) this.isFiring = false;
+            }
         });
         
         this.preloadMaps();
@@ -285,6 +320,8 @@ class PixelCS3D {
             let shootTouchId = null;
             let lastShootTouchX = 0;
             let lastShootTouchY = 0;
+            let hasMoved = false; // 记录是否有拖动
+            const self = this;
             
             shootBtn.addEventListener('touchstart', (e) => {
                 e.preventDefault();
@@ -293,11 +330,29 @@ class PixelCS3D {
                 shootTouchId = touch.identifier;
                 lastShootTouchX = touch.clientX;
                 lastShootTouchY = touch.clientY;
-                this.isFiring = true;
-                this.shoot();
+                hasMoved = false;
+                
+                // C4下包支持 - 当持有C4且在包点时，开始下包读条
+                if (self.isDefuseMode && self.currentWeapon === 'c4' && self.hasC4 && !self.c4Planted) {
+                    const site = self.isInBombSite();
+                    if (site) {
+                        self.startPlantingC4();
+                        return;
+                    }
+                }
+                
+                // 狙击枪开镜时不立即射击，等待touchend判断
+                if (self.currentWeapon === 'awp' && self.isScoped) {
+                    // 开镜状态下不立即射击
+                } else if (self.currentWeapon !== 'c4') {
+                    // 非C4武器正常射击
+                    self.isFiring = true;
+                    self.shoot();
+                }
             }, { passive: false });
             
-            shootBtn.addEventListener('touchmove', (e) => {
+            // 绑定到document，确保手指离开按钮区域也能触发
+            document.addEventListener('touchmove', (e) => {
                 if (shootTouchId === null) return;
                 for (let i = 0; i < e.touches.length; i++) {
                     if (e.touches[i].identifier === shootTouchId) {
@@ -305,16 +360,21 @@ class PixelCS3D {
                         const deltaX = touch.clientX - lastShootTouchX;
                         const deltaY = touch.clientY - lastShootTouchY;
                         
-                        // 应用视角旋转
-                        const sensitivity = 0.006 * this.sensitivityMultiplier;
-                        this.yaw -= deltaX * sensitivity;
-                        this.pitch -= deltaY * sensitivity;
-                        this.pitch = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, this.pitch));
+                        // 检测是否有明显移动
+                        if (Math.abs(deltaX) > 3 || Math.abs(deltaY) > 3) {
+                            hasMoved = true;
+                        }
                         
-                        if (!this.isSpectating && this.camera) {
-                            this.camera.rotation.order = 'YXZ';
-                            this.camera.rotation.y = this.yaw;
-                            this.camera.rotation.x = this.pitch;
+                        // 应用视角旋转
+                        const sensitivity = 0.006 * self.sensitivityMultiplier;
+                        self.yaw -= deltaX * sensitivity;
+                        self.pitch -= deltaY * sensitivity;
+                        self.pitch = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, self.pitch));
+                        
+                        if (!self.isSpectating && self.camera) {
+                            self.camera.rotation.order = 'YXZ';
+                            self.camera.rotation.y = self.yaw;
+                            self.camera.rotation.x = self.pitch;
                         }
                         
                         lastShootTouchX = touch.clientX;
@@ -324,19 +384,40 @@ class PixelCS3D {
                 }
             }, { passive: true });
             
-            shootBtn.addEventListener('touchend', (e) => {
+            // 绑定到document，确保手指离开按钮区域也能触发射击
+            document.addEventListener('touchend', (e) => {
+                if (shootTouchId === null) return;
                 for (let i = 0; i < e.changedTouches.length; i++) {
                     if (e.changedTouches[i].identifier === shootTouchId) {
-                        this.isFiring = false;
+                        // 松开时取消下包
+                        if (self.isPlanting) {
+                            self.cancelPlanting();
+                        }
+                        // 狙击枪开镜时，松手就射击（无论是否拖动）
+                        if (self.currentWeapon === 'awp' && self.isScoped) {
+                            self.shoot();
+                        }
+                        self.isFiring = false;
                         shootTouchId = null;
+                        hasMoved = false;
                         break;
                     }
                 }
             });
             
-            shootBtn.addEventListener('touchcancel', () => {
-                this.isFiring = false;
+            document.addEventListener('touchcancel', (e) => {
+                if (shootTouchId === null) return;
+                // 取消下包
+                if (self.isPlanting) {
+                    self.cancelPlanting();
+                }
+                // touchcancel时也尝试射击（狙击枪开镜状态）
+                if (self.currentWeapon === 'awp' && self.isScoped) {
+                    self.shoot();
+                }
+                self.isFiring = false;
                 shootTouchId = null;
+                hasMoved = false;
             });
         }
         
@@ -452,6 +533,54 @@ class PixelCS3D {
                 this.switchToSlot(slotNum);
             }, { passive: false });
         });
+        
+        // 拆包按钮
+        const defuseBtn = document.getElementById('mobile-defuse');
+        if (defuseBtn) {
+            let defuseTouchId = null;
+            const self = this;
+            
+            defuseBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                defuseTouchId = e.changedTouches[0].identifier;
+                // 开始拆包
+                self.tryDefuse();
+                // 设置E键为按下状态，让updateDefuseProgress正常工作
+                self.keys['KeyE'] = true;
+            }, { passive: false });
+            
+            defuseBtn.addEventListener('touchend', (e) => {
+                for (let i = 0; i < e.changedTouches.length; i++) {
+                    if (e.changedTouches[i].identifier === defuseTouchId) {
+                        defuseTouchId = null;
+                        self.keys['KeyE'] = false;
+                        self.cancelDefuse();
+                        break;
+                    }
+                }
+            });
+            
+            defuseBtn.addEventListener('touchcancel', () => {
+                defuseTouchId = null;
+                self.keys['KeyE'] = false;
+                self.cancelDefuse();
+            });
+        }
+    }
+    
+    // 更新手机端拆包按钮显示状态
+    updateMobileDefuseButton() {
+        if (!this.isMobile) return;
+        const defuseBtn = document.getElementById('mobile-defuse');
+        if (!defuseBtn) return;
+        
+        // CT在爆破模式下，C4已安放且靠近C4时显示拆包按钮
+        if (this.isDefuseMode && this.c4Planted && this.selectedTeam === 'ct' && this.isNearC4()) {
+            defuseBtn.style.display = 'block';
+        } else {
+            defuseBtn.style.display = 'none';
+        }
     }
     
     setupTouchLook() {
@@ -814,6 +943,7 @@ class PixelCS3D {
     initCustomMapImport() {
         const fileInput = document.getElementById('customMapFile');
         const importBtn = document.getElementById('importMapBtn');
+        const cloudBtn = document.getElementById('cloudMapBtn');
         
         if (!fileInput || !importBtn) return;
         
@@ -831,20 +961,119 @@ class PixelCS3D {
                     if (!validationResult.valid) {
                         alert('地图文件格式错误: ' + validationResult.error);
                         fileInput.value = '';
-                        document.getElementById('customMapName').textContent = '未选择文件';
+                        document.getElementById('customMapName').textContent = '未选择地图';
                         return;
                     }
                     this.loadCustomMap(mapData);
-                    document.getElementById('customMapName').textContent = file.name;
+                    document.getElementById('customMapName').textContent = '📁 ' + (mapData.displayName || file.name);
                 } catch (err) {
                     alert('地图文件解析失败: JSON格式错误');
                     fileInput.value = '';
-                    document.getElementById('customMapName').textContent = '未选择文件';
+                    document.getElementById('customMapName').textContent = '未选择地图';
                     console.error('地图加载失败:', err);
                 }
             };
             reader.readAsText(file);
         });
+        
+        // 云端地图按钮
+        if (cloudBtn) {
+            cloudBtn.addEventListener('click', () => this.showCloudMapModal());
+        }
+        
+        // 云端地图弹窗事件
+        const closeBtn = document.getElementById('cloud-map-close');
+        const refreshBtn = document.getElementById('cloud-map-refresh');
+        
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => this.hideCloudMapModal());
+        }
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', () => this.loadCloudMapList());
+        }
+    }
+    
+    // 显示云端地图弹窗
+    showCloudMapModal() {
+        const modal = document.getElementById('cloud-map-modal');
+        if (modal) {
+            modal.style.display = 'flex';
+            this.loadCloudMapList();
+        }
+    }
+    
+    // 隐藏云端地图弹窗
+    hideCloudMapModal() {
+        const modal = document.getElementById('cloud-map-modal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    }
+    
+    // 加载云端地图列表
+    async loadCloudMapList() {
+        const loadingEl = document.getElementById('cloud-map-loading');
+        const errorEl = document.getElementById('cloud-map-error');
+        const emptyEl = document.getElementById('cloud-map-empty');
+        const listEl = document.getElementById('cloud-map-list');
+        
+        if (!loadingEl || !listEl) return;
+        
+        loadingEl.style.display = 'block';
+        errorEl.style.display = 'none';
+        emptyEl.style.display = 'none';
+        listEl.innerHTML = '';
+        
+        try {
+            const maps = await MapCloudService.listMaps();
+            loadingEl.style.display = 'none';
+            
+            if (maps.length === 0) {
+                emptyEl.style.display = 'block';
+                return;
+            }
+            
+            maps.forEach(map => {
+                const item = document.createElement('div');
+                item.className = 'cloud-map-item';
+                item.innerHTML = `
+                    <div class="cloud-map-item-info">
+                        <div class="cloud-map-item-name">${this.escapeHtml(map.displayName || map.name)}</div>
+                        <div class="cloud-map-item-id">${this.escapeHtml(map.id)}</div>
+                    </div>
+                `;
+                item.addEventListener('click', () => this.selectCloudMap(map.id));
+                listEl.appendChild(item);
+            });
+        } catch (err) {
+            loadingEl.style.display = 'none';
+            errorEl.textContent = err.message;
+            errorEl.style.display = 'block';
+        }
+    }
+    
+    // 选择云端地图
+    async selectCloudMap(mapId) {
+        try {
+            const mapData = await MapCloudService.getMap(mapId);
+            const validationResult = this.validateCustomMap(mapData);
+            if (!validationResult.valid) {
+                alert('云端地图格式错误: ' + validationResult.error);
+                return;
+            }
+            this.loadCustomMap(mapData);
+            document.getElementById('customMapName').textContent = '☁️ ' + (mapData.displayName || mapId);
+            this.hideCloudMapModal();
+        } catch (err) {
+            alert('加载云端地图失败: ' + err.message);
+        }
+    }
+    
+    // HTML转义
+    escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str || '';
+        return div.innerHTML;
     }
     
     // 校验自定义地图格式
@@ -1379,6 +1608,14 @@ class PixelCS3D {
             case 2: newWeapon = this.secondaryWeapon; break;
             case 3: newWeapon = 'knife'; break;
             case 4: newWeapon = 'grenade'; break;
+            case 5: 
+                // C4切换
+                if (this.isDefuseMode && this.hasC4) {
+                    newWeapon = 'c4';
+                } else {
+                    return;
+                }
+                break;
             default: return;
         }
         if (newWeapon === this.currentWeapon) return;
@@ -1487,8 +1724,9 @@ class PixelCS3D {
     
     setCrouch(crouch) {
         if (this.isCrouching === crouch) return;
-        if (crouch && this.camera) {
-            if (!this.canCrouchAt(this.camera.position.x, this.camera.position.z)) return;
+        // 下蹲总是允许的，只有站起来时才需要检查空间
+        if (!crouch && this.camera) {
+            if (!this.canStandAt(this.camera.position.x, this.camera.position.z)) return;
         }
         this.isCrouching = crouch;
         const targetHeight = crouch ? this.crouchingHeight : this.standingHeight;
@@ -2287,6 +2525,70 @@ class PixelCS3D {
     }
     
     actualStartGame(name, roomId, isCreating) {
+        // 先测试服务器连接
+        this.showConnectingOverlay();
+        
+        const testWs = new WebSocket(WS_SERVER_URL);
+        const timeout = setTimeout(() => {
+            testWs.close();
+            this.hideConnectingOverlay();
+            this.showMenuError('服务器连接超时，请检查网络或服务器地址');
+        }, 5000);
+        
+        testWs.onopen = () => {
+            clearTimeout(timeout);
+            testWs.close();
+            this.hideConnectingOverlay();
+            this.doStartGame(name, roomId, isCreating);
+        };
+        
+        testWs.onerror = () => {
+            clearTimeout(timeout);
+            this.hideConnectingOverlay();
+            this.showMenuError('服务器连接失败，请检查网络或服务器地址');
+        };
+    }
+    
+    showConnectingOverlay() {
+        let overlay = document.getElementById('connecting-overlay');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'connecting-overlay';
+            overlay.innerHTML = `
+                <div class="connecting-content">
+                    <div class="connecting-spinner"></div>
+                    <div class="connecting-text">正在连接服务器...</div>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+        }
+        overlay.style.display = 'flex';
+    }
+    
+    hideConnectingOverlay() {
+        const overlay = document.getElementById('connecting-overlay');
+        if (overlay) {
+            overlay.style.display = 'none';
+        }
+    }
+    
+    showMenuError(message) {
+        // 显示错误提示
+        let errorDiv = document.getElementById('menu-error');
+        if (!errorDiv) {
+            errorDiv = document.createElement('div');
+            errorDiv.id = 'menu-error';
+            const menuContainer = document.querySelector('.menu-container');
+            if (menuContainer) {
+                menuContainer.appendChild(errorDiv);
+            }
+        }
+        errorDiv.textContent = message;
+        errorDiv.style.display = 'block';
+        setTimeout(() => { errorDiv.style.display = 'none'; }, 4000);
+    }
+    
+    doStartGame(name, roomId, isCreating) {
         // 添加游戏中标记，用于CSS横屏提示
         document.body.classList.add('in-game');
         
@@ -2404,11 +2706,32 @@ class PixelCS3D {
         this.animate();
     }
 
-
     // ==================== 网络通信 ====================
     connect(name, roomId, isCreating) {
+        // 保存连接信息用于重连
+        this.connectionInfo = { name, roomId, isCreating };
+        this.reconnectAttempts = 0;
+        this.isReconnecting = false;
+        
+        this.establishConnection(name, roomId, isCreating);
+    }
+    
+    establishConnection(name, roomId, isCreating) {
+        // 关闭旧连接
+        if (this.ws) {
+            this.ws.onclose = null;
+            this.ws.onerror = null;
+            this.ws.close();
+        }
+        
         this.ws = new WebSocket(WS_SERVER_URL);
+        
         this.ws.onopen = () => {
+            console.log('WebSocket连接成功');
+            this.reconnectAttempts = 0;
+            this.isReconnecting = false;
+            this.hideReconnectOverlay();
+            
             const joinData = { action: 'join', name, room_id: roomId, team: this.selectedTeam };
             if (isCreating) {
                 joinData.target_kills = this.targetKills;
@@ -2434,10 +2757,83 @@ class PixelCS3D {
             }
             this.ws.send(JSON.stringify(joinData));
         };
+        
         this.ws.onmessage = (event) => {
             const data = JSON.parse(event.data);
             this.handleMessage(data);
         };
+        
+        this.ws.onclose = (event) => {
+            console.log('WebSocket连接关闭', event.code, event.reason);
+            if (this.connectionInfo && !this.gameOver) {
+                this.attemptReconnect();
+            }
+        };
+        
+        this.ws.onerror = (error) => {
+            console.error('WebSocket错误:', error);
+        };
+    }
+    
+    attemptReconnect() {
+        if (this.isReconnecting || !this.connectionInfo) return;
+        if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+            this.showReconnectFailed();
+            return;
+        }
+        
+        this.isReconnecting = true;
+        this.reconnectAttempts++;
+        const delay = this.reconnectDelay * Math.pow(1.5, this.reconnectAttempts - 1);
+        
+        this.showReconnectOverlay(this.reconnectAttempts, this.maxReconnectAttempts);
+        
+        console.log(`尝试重连 (${this.reconnectAttempts}/${this.maxReconnectAttempts})，${delay}ms后...`);
+        
+        setTimeout(() => {
+            this.isReconnecting = false;
+            if (this.connectionInfo) {
+                this.establishConnection(
+                    this.connectionInfo.name,
+                    this.connectionInfo.roomId,
+                    false // 重连时不作为创建者
+                );
+            }
+        }, delay);
+    }
+    
+    showReconnectOverlay(attempt, max) {
+        let overlay = document.getElementById('reconnect-overlay');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'reconnect-overlay';
+            overlay.innerHTML = `
+                <div class="reconnect-content">
+                    <div class="reconnect-spinner"></div>
+                    <div class="reconnect-text">连接断开，正在重连...</div>
+                    <div class="reconnect-attempt"></div>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+        }
+        overlay.style.display = 'flex';
+        overlay.querySelector('.reconnect-attempt').textContent = `尝试 ${attempt}/${max}`;
+    }
+    
+    hideReconnectOverlay() {
+        const overlay = document.getElementById('reconnect-overlay');
+        if (overlay) {
+            overlay.style.display = 'none';
+        }
+    }
+    
+    showReconnectFailed() {
+        let overlay = document.getElementById('reconnect-overlay');
+        if (overlay) {
+            overlay.querySelector('.reconnect-spinner').style.display = 'none';
+            overlay.querySelector('.reconnect-text').textContent = '重连失败';
+            overlay.querySelector('.reconnect-attempt').innerHTML = '<button onclick="location.reload()">返回主页</button>';
+        }
     }
     
     handleMessage(data) {
@@ -3542,6 +3938,7 @@ class PixelCS3D {
         const mapBoundary = mapSize;
         const playerHeight = checkHeight !== null ? checkHeight : this.camera.position.y;
         const maxJumpHeight = 20;
+        const playerHeadHeight = playerHeight; // 玩家头部高度（相机位置）
         
         let resultX = newX;
         let resultZ = newZ;
@@ -3560,11 +3957,17 @@ class PixelCS3D {
             let bestPushX = 0, bestPushZ = 0;
             
             for (const wall of this.walls) {
-                const wallHeight = wall.h || 20;
+                const wallTopHeight = wall.h || 20;
+                const wallBottomHeight = wall.hBottom || 0;  // 障碍物底部高度
                 const playerFeetHeight = playerHeight - this.standingHeight;
                 
-                // 如果玩家脚底高于障碍物，跳过碰撞但检查是否站在上面
-                if (playerFeetHeight >= wallHeight - 0.5) {
+                // 如果玩家头部低于障碍物底部，可以从下面通过
+                if (playerHeadHeight < wallBottomHeight) {
+                    continue;
+                }
+                
+                // 如果玩家脚底高于障碍物顶部，跳过碰撞但检查是否站在上面
+                if (playerFeetHeight >= wallTopHeight - 0.5) {
                     let isAboveWall = false;
                     if (wall.rotation && wall.rotation !== 0) {
                         const hw = (wall.originalW || wall.w) / 2;
@@ -3577,8 +3980,8 @@ class PixelCS3D {
                         const wx = wall.x, wz = wall.z, ww = wall.w, wd = wall.d;
                         isAboveWall = resultX >= wx && resultX <= wx + ww && resultZ >= wz && resultZ <= wz + wd;
                     }
-                    if (isAboveWall && wallHeight <= maxJumpHeight) {
-                        standingOnHeight = Math.max(standingOnHeight, wallHeight);
+                    if (isAboveWall && wallTopHeight <= maxJumpHeight) {
+                        standingOnHeight = Math.max(standingOnHeight, wallTopHeight);
                     }
                     continue;
                 }
@@ -3664,10 +4067,14 @@ class PixelCS3D {
         return { blocked, pushX, pushZ, clampedX: resultX, clampedZ: resultZ, standingOnHeight };
     }
     
-    canCrouchAt(x, z) {
+    // 检查是否可以在某位置站立（用于从下蹲状态站起来）
+    canStandAt(x, z) {
         const playerRadius = 2.5;
         for (const wall of this.walls) {
             const wallHeight = wall.h || 20;
+            // 只有当墙壁高度介于下蹲高度和站立高度之间时才需要检查
+            if (wallHeight <= this.crouchingHeight || wallHeight > this.standingHeight) continue;
+            
             let dist;
             
             if (wall.rotation && wall.rotation !== 0) {
@@ -3688,7 +4095,8 @@ class PixelCS3D {
                 dist = Math.sqrt(distX * distX + distZ * distZ);
             }
             
-            if (dist < playerRadius && this.crouchingHeight < wallHeight && this.standingHeight >= wallHeight) return false;
+            // 如果玩家在墙壁范围内，不能站立
+            if (dist < playerRadius) return false;
         }
         return true;
     }
@@ -3715,6 +4123,9 @@ class PixelCS3D {
         if (this.isDefusing) {
             this.updateDefuseProgress();
         }
+        
+        // 更新手机端拆包按钮显示状态
+        this.updateMobileDefuseButton();
         
         // 更新C4倒计时音效
         if (this.c4Planted && this.isDefuseMode) {
@@ -3789,7 +4200,8 @@ class PixelCS3D {
         } else {
             const heightDiff = this.targetCameraHeight - this.camera.position.y;
             if (Math.abs(heightDiff) > 0.1) {
-                const lerpSpeed = 15;
+                // 下蹲时使用更快的过渡速度
+                const lerpSpeed = this.isCrouching ? 50 : 15;
                 this.camera.position.y += heightDiff * Math.min(lerpSpeed * deltaTime, 1);
             } else {
                 this.camera.position.y = this.targetCameraHeight;

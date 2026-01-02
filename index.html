@@ -110,10 +110,13 @@
                         </select>
                     </div>
                     <div class="input-group" id="customMapGroup" style="display: none;">
-                        <label>导入地图文件</label>
-                        <input type="file" id="customMapFile" accept=".json" style="display: none;">
-                        <button type="button" id="importMapBtn" class="pixel-btn small">选择地图文件</button>
-                        <span id="customMapName" style="margin-left: 10px; color: #888;">未选择文件</span>
+                        <label>导入地图</label>
+                        <div class="custom-map-options">
+                            <input type="file" id="customMapFile" accept=".json" style="display: none;">
+                            <button type="button" id="importMapBtn" class="pixel-btn small">📁 本地文件</button>
+                            <button type="button" id="cloudMapBtn" class="pixel-btn small">☁️ 云端地图</button>
+                        </div>
+                        <span id="customMapName" style="margin-top: 8px; display: block; color: #888;">未选择地图</span>
                     </div>
                     <div class="input-group" id="mapSelectGroup">
                         <label>选择地图</label>
@@ -235,19 +238,22 @@
             <div id="mobile-buttons">
                 <button id="mobile-shoot" class="mobile-btn shoot-btn">🔫</button>
                 <button id="mobile-scope" class="mobile-btn scope-btn">🎯</button>
-                <button id="mobile-reload" class="mobile-btn">R</button>
-                <button id="mobile-jump" class="mobile-btn">⬆</button>
-                <button id="mobile-crouch" class="mobile-btn">⬇</button>
-                <button id="mobile-switch" class="mobile-btn">Q</button>
-                <button id="mobile-buy" class="mobile-btn">B</button>
+                <button id="mobile-reload" class="mobile-btn">换弹</button>
+                <button id="mobile-jump" class="mobile-btn">跳</button>
+                <button id="mobile-crouch" class="mobile-btn">蹲</button>
+                <button id="mobile-switch" class="mobile-btn">切枪</button>
+                <button id="mobile-buy" class="mobile-btn">购买</button>
                 <button id="mobile-settings" class="mobile-btn">⚙</button>
             </div>
+            <!-- 拆包按钮（靠近C4时显示） -->
+            <button id="mobile-defuse" class="mobile-btn defuse-btn" style="display: none;">拆包</button>
             <!-- 武器快捷栏 -->
             <div id="mobile-weapon-bar">
                 <button class="weapon-slot" data-slot="1">1</button>
                 <button class="weapon-slot" data-slot="2">2</button>
                 <button class="weapon-slot" data-slot="3">🔪</button>
                 <button class="weapon-slot" data-slot="4">💣</button>
+                <button class="weapon-slot" data-slot="5">C4</button>
             </div>
         </div>
         
@@ -309,8 +315,24 @@
         </div>
     </div>
     
+    <!-- 云端地图选择弹窗 -->
+    <div id="cloud-map-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-box">
+            <h3>☁️ 云端地图</h3>
+            <div id="cloud-map-loading" class="modal-status">加载中...</div>
+            <div id="cloud-map-error" class="modal-status error" style="display: none;"></div>
+            <div id="cloud-map-empty" class="modal-status" style="display: none;">暂无云端地图</div>
+            <div id="cloud-map-list" class="cloud-map-list"></div>
+            <div class="modal-actions">
+                <button id="cloud-map-refresh" class="pixel-btn small">🔄 刷新</button>
+                <button id="cloud-map-close" class="pixel-btn small">关闭</button>
+            </div>
+        </div>
+    </div>
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="audio.js"></script>
+    <script src="map-cloud.js"></script>
     <script src="maps.js"></script>
     <script src="player.js"></script>
     <script src="weapons.js"></script>

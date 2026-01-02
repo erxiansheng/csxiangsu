@@ -15,11 +15,15 @@
             </div>
             <div class="toolbar-section">
                 <button id="newMap" class="tool-btn">新建</button>
-                <button id="saveMap" class="tool-btn primary">保存JSON</button>
+                <button id="saveMap" class="tool-btn">保存JSON</button>
                 <button id="exportCode" class="tool-btn">导出代码</button>
                 <button id="loadMap" class="tool-btn">加载文件</button>
                 <button id="loadPreset" class="tool-btn">预设地图</button>
                 <button id="testMap" class="tool-btn">测试视角</button>
+            </div>
+            <div class="toolbar-section cloud-section">
+                <button id="cloudSave" class="tool-btn primary">☁️ 保存云端</button>
+                <button id="cloudLoad" class="tool-btn">☁️ 云端地图</button>
             </div>
             <div class="toolbar-section">
                 <button id="addFloor" class="tool-btn">一键铺地板</button>
@@ -108,26 +112,6 @@
                     <span>T复活点</span>
                 </div>
             </div>
-            
-            <div class="object-category">
-                <h4>装饰物</h4>
-                <div class="object-item" data-type="barrel" draggable="true">
-                    <div class="preview barrel"></div>
-                    <span>油桶</span>
-                </div>
-                <div class="object-item" data-type="sandbag" draggable="true">
-                    <div class="preview sandbag"></div>
-                    <span>沙袋</span>
-                </div>
-                <div class="object-item" data-type="graffiti" draggable="true">
-                    <div class="preview graffiti"></div>
-                    <span>涂鸦</span>
-                </div>
-                <div class="object-item" data-type="light" draggable="true">
-                    <div class="preview light"></div>
-                    <span>灯光</span>
-                </div>
-            </div>
         </div>
 
         <!-- 3D 视图 -->
@@ -198,9 +182,52 @@
                 </div>
             </div>
         </div>
+
+        <!-- 云端地图列表弹窗 -->
+        <div id="cloud-modal" class="modal">
+            <div class="modal-content" style="width:500px;">
+                <h3>☁️ 云端地图</h3>
+                <div id="cloud-loading" class="cloud-status">加载中...</div>
+                <div id="cloud-error" class="cloud-status error" style="display:none;"></div>
+                <div id="cloud-empty" class="cloud-status" style="display:none;">暂无云端地图</div>
+                <div id="cloud-list"></div>
+                <div class="modal-buttons">
+                    <button id="cloud-refresh" class="tool-btn">🔄 刷新</button>
+                    <button id="close-cloud-modal" class="tool-btn">关闭</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 云端保存确认弹窗 -->
+        <div id="cloud-save-modal" class="modal">
+            <div class="modal-content" style="width:400px;">
+                <h3>☁️ 保存到云端</h3>
+                <p>确认将当前地图保存到云端？</p>
+                <div class="cloud-save-info">
+                    <div class="prop-group">
+                        <label>地图ID</label>
+                        <span id="cloud-save-id">-</span>
+                    </div>
+                    <div class="prop-group">
+                        <label>显示名称</label>
+                        <span id="cloud-save-name">-</span>
+                    </div>
+                    <div class="prop-group">
+                        <label>物件数量</label>
+                        <span id="cloud-save-count">-</span>
+                    </div>
+                </div>
+                <div id="cloud-save-status" class="cloud-status" style="display:none;"></div>
+                <div class="modal-buttons">
+                    <button id="confirm-cloud-save" class="tool-btn primary">确认保存</button>
+                    <button id="close-cloud-save-modal" class="tool-btn">取消</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="../map-cloud.js"></script>
     <script src="editor.js"></script>
 </body>
 </html>
