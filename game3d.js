@@ -2,7 +2,7 @@
 
 // ==================== 服务器配置 ====================
 // 默认服务器地址，可在页面上配置覆盖
-const DEFAULT_WS_SERVER_URL = 'ws://192.168.31.134:8765';
+const DEFAULT_WS_SERVER_URL = 'wss://cs16xs.188np.cn';
 // 从localStorage读取自定义服务器地址，如果没有则使用默认地址
 let WS_SERVER_URL = localStorage.getItem('cs_server_url') || DEFAULT_WS_SERVER_URL;
 // ===================================================
