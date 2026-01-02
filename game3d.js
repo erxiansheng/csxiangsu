@@ -2,7 +2,7 @@
 
 // ==================== 服务器配置 ====================
 // 默认服务器地址，可在页面上配置覆盖
-const DEFAULT_WS_SERVER_URL = 'wss://cs16xs.188np.cn';
+const DEFAULT_WS_SERVER_URL = 'ws://192.168.31.134:8765';
 // 从localStorage读取自定义服务器地址，如果没有则使用默认地址
 let WS_SERVER_URL = localStorage.getItem('cs_server_url') || DEFAULT_WS_SERVER_URL;
 // ===================================================
@@ -168,6 +168,357 @@ class PixelCS3D {
         this.loadAnnouncement();
         this.initCustomMapImport();
         this.initServerConfig();
+        this.initMobileControls();
+    }
+    
+    // 初始化手机端控制器
+    initMobileControls() {
+        // 检测是否为移动设备
+        this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) 
+            || ('ontouchstart' in window) 
+            || (navigator.maxTouchPoints > 0);
+        
+        if (!this.isMobile) return;
+        
+        const mobileControls = document.getElementById('mobile-controls');
+        if (!mobileControls) return;
+        
+        mobileControls.style.display = 'block';
+        
+        // 手机端自动锁定（模拟）
+        this.isLocked = true;
+        
+        // 摇杆控制
+        this.setupJoystick();
+        
+        // 按钮控制
+        this.setupMobileButtons();
+        
+        // 触摸视角控制
+        this.setupTouchLook();
+        
+        // 尝试锁定横屏
+        this.lockLandscape();
+    }
+    
+    // 尝试锁定横屏
+    lockLandscape() {
+        if (screen.orientation && screen.orientation.lock) {
+            screen.orientation.lock('landscape').catch(() => {
+                console.log('无法锁定屏幕方向');
+            });
+        }
+    }
+    
+    setupJoystick() {
+        const joystickBase = document.getElementById('joystick-base');
+        const joystickStick = document.getElementById('joystick-stick');
+        if (!joystickBase || !joystickStick) return;
+        
+        let joystickActive = false;
+        let joystickTouchId = null;
+        let joystickCenter = { x: 0, y: 0 };
+        const maxDistance = 35;
+        
+        const handleJoystickMove = (clientX, clientY) => {
+            if (!joystickActive) return;
+            
+            const dx = clientX - joystickCenter.x;
+            const dy = clientY - joystickCenter.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            const clampedDistance = Math.min(distance, maxDistance);
+            const angle = Math.atan2(dy, dx);
+            
+            const stickX = Math.cos(angle) * clampedDistance;
+            const stickY = Math.sin(angle) * clampedDistance;
+            joystickStick.style.transform = `translate(${stickX}px, ${stickY}px)`;
+            
+            // 更新移动键状态
+            const threshold = 10;
+            this.keys['KeyW'] = dy < -threshold;
+            this.keys['KeyS'] = dy > threshold;
+            this.keys['KeyA'] = dx < -threshold;
+            this.keys['KeyD'] = dx > threshold;
+        };
+        
+        joystickBase.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const touch = e.changedTouches[0];
+            joystickActive = true;
+            joystickTouchId = touch.identifier;
+            const rect = joystickBase.getBoundingClientRect();
+            joystickCenter = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+            handleJoystickMove(touch.clientX, touch.clientY);
+        }, { passive: false });
+        
+        document.addEventListener('touchmove', (e) => {
+            if (!joystickActive) return;
+            for (let i = 0; i < e.touches.length; i++) {
+                if (e.touches[i].identifier === joystickTouchId) {
+                    handleJoystickMove(e.touches[i].clientX, e.touches[i].clientY);
+                    break;
+                }
+            }
+        }, { passive: true });
+        
+        document.addEventListener('touchend', (e) => {
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                if (e.changedTouches[i].identifier === joystickTouchId) {
+                    joystickActive = false;
+                    joystickTouchId = null;
+                    joystickStick.style.transform = 'translate(0, 0)';
+                    this.keys['KeyW'] = false;
+                    this.keys['KeyS'] = false;
+                    this.keys['KeyA'] = false;
+                    this.keys['KeyD'] = false;
+                    break;
+                }
+            }
+        });
+    }
+    
+    setupMobileButtons() {
+        // 射击按钮 - 支持按住拖动视角
+        const shootBtn = document.getElementById('mobile-shoot');
+        if (shootBtn) {
+            let shootTouchId = null;
+            let lastShootTouchX = 0;
+            let lastShootTouchY = 0;
+            
+            shootBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const touch = e.changedTouches[0];
+                shootTouchId = touch.identifier;
+                lastShootTouchX = touch.clientX;
+                lastShootTouchY = touch.clientY;
+                this.isFiring = true;
+                this.shoot();
+            }, { passive: false });
+            
+            shootBtn.addEventListener('touchmove', (e) => {
+                if (shootTouchId === null) return;
+                for (let i = 0; i < e.touches.length; i++) {
+                    if (e.touches[i].identifier === shootTouchId) {
+                        const touch = e.touches[i];
+                        const deltaX = touch.clientX - lastShootTouchX;
+                        const deltaY = touch.clientY - lastShootTouchY;
+                        
+                        // 应用视角旋转
+                        const sensitivity = 0.006 * this.sensitivityMultiplier;
+                        this.yaw -= deltaX * sensitivity;
+                        this.pitch -= deltaY * sensitivity;
+                        this.pitch = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, this.pitch));
+                        
+                        if (!this.isSpectating && this.camera) {
+                            this.camera.rotation.order = 'YXZ';
+                            this.camera.rotation.y = this.yaw;
+                            this.camera.rotation.x = this.pitch;
+                        }
+                        
+                        lastShootTouchX = touch.clientX;
+                        lastShootTouchY = touch.clientY;
+                        break;
+                    }
+                }
+            }, { passive: true });
+            
+            shootBtn.addEventListener('touchend', (e) => {
+                for (let i = 0; i < e.changedTouches.length; i++) {
+                    if (e.changedTouches[i].identifier === shootTouchId) {
+                        this.isFiring = false;
+                        shootTouchId = null;
+                        break;
+                    }
+                }
+            });
+            
+            shootBtn.addEventListener('touchcancel', () => {
+                this.isFiring = false;
+                shootTouchId = null;
+            });
+        }
+        
+        // 换弹按钮
+        const reloadBtn = document.getElementById('mobile-reload');
+        if (reloadBtn) {
+            reloadBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.reload();
+            }, { passive: false });
+        }
+        
+        // 跳跃按钮
+        const jumpBtn = document.getElementById('mobile-jump');
+        if (jumpBtn) {
+            jumpBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.keys['Space'] = true;
+            }, { passive: false });
+            jumpBtn.addEventListener('touchend', () => {
+                this.keys['Space'] = false;
+            });
+        }
+        
+        // 蹲下按钮 - 使用isCrouching标记
+        const crouchBtn = document.getElementById('mobile-crouch');
+        if (crouchBtn) {
+            let crouchTouchId = null;
+            crouchBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                crouchTouchId = e.changedTouches[0].identifier;
+                // 直接设置下蹲状态
+                if (this.camera) {
+                    this.setCrouch(true);
+                } else {
+                    this.isCrouching = true;
+                }
+            }, { passive: false });
+            crouchBtn.addEventListener('touchend', (e) => {
+                for (let i = 0; i < e.changedTouches.length; i++) {
+                    if (e.changedTouches[i].identifier === crouchTouchId) {
+                        crouchTouchId = null;
+                        if (this.camera) {
+                            this.setCrouch(false);
+                        } else {
+                            this.isCrouching = false;
+                        }
+                        break;
+                    }
+                }
+            });
+            crouchBtn.addEventListener('touchcancel', () => {
+                crouchTouchId = null;
+                if (this.camera) {
+                    this.setCrouch(false);
+                } else {
+                    this.isCrouching = false;
+                }
+            });
+        }
+        
+        // 快速切枪按钮 - 直接调用switchToPrevious
+        const switchBtn = document.getElementById('mobile-switch');
+        if (switchBtn) {
+            switchBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.switchToPrevious();
+            }, { passive: false });
+        }
+        
+        // 购买菜单按钮
+        const buyBtn = document.getElementById('mobile-buy');
+        if (buyBtn) {
+            buyBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.toggleBuyMenu();
+            }, { passive: false });
+        }
+        
+        // 设置按钮
+        const settingsBtn = document.getElementById('mobile-settings');
+        if (settingsBtn) {
+            settingsBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.toggleSettingsMenu();
+            }, { passive: false });
+        }
+        
+        // 开镜按钮（AWP专用）
+        const scopeBtn = document.getElementById('mobile-scope');
+        if (scopeBtn) {
+            scopeBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (this.currentWeapon === 'awp') {
+                    this.toggleScope();
+                }
+            }, { passive: false });
+        }
+        
+        // 武器快捷栏 - 直接调用switchToSlot
+        document.querySelectorAll('.weapon-slot').forEach(slot => {
+            slot.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const slotNum = parseInt(slot.dataset.slot);
+                this.switchToSlot(slotNum);
+            }, { passive: false });
+        });
+    }
+    
+    setupTouchLook() {
+        const gameContainer = document.getElementById('game');
+        if (!gameContainer) return;
+        
+        let lastTouchX = 0;
+        let lastTouchY = 0;
+        let touchLookActive = false;
+        let touchId = null;
+        
+        gameContainer.addEventListener('touchstart', (e) => {
+            // 只处理右半边屏幕的触摸（用于视角控制）
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                const touch = e.changedTouches[i];
+                if (touch.clientX > window.innerWidth / 3 && !touchLookActive) {
+                    touchLookActive = true;
+                    touchId = touch.identifier;
+                    lastTouchX = touch.clientX;
+                    lastTouchY = touch.clientY;
+                    break;
+                }
+            }
+        }, { passive: true });
+        
+        gameContainer.addEventListener('touchmove', (e) => {
+            if (!touchLookActive) return;
+            
+            // 找到对应的触摸点
+            let touch = null;
+            for (let i = 0; i < e.touches.length; i++) {
+                if (e.touches[i].identifier === touchId) {
+                    touch = e.touches[i];
+                    break;
+                }
+            }
+            if (!touch) return;
+            
+            const deltaX = touch.clientX - lastTouchX;
+            const deltaY = touch.clientY - lastTouchY;
+            
+            // 应用视角旋转
+            const sensitivity = 0.008 * this.sensitivityMultiplier;
+            this.yaw -= deltaX * sensitivity;
+            this.pitch -= deltaY * sensitivity;
+            this.pitch = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, this.pitch));
+            
+            // 非观战模式下更新相机旋转
+            if (!this.isSpectating) {
+                this.camera.rotation.order = 'YXZ';
+                this.camera.rotation.y = this.yaw;
+                this.camera.rotation.x = this.pitch;
+            }
+            
+            lastTouchX = touch.clientX;
+            lastTouchY = touch.clientY;
+        }, { passive: true });
+        
+        gameContainer.addEventListener('touchend', (e) => {
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                if (e.changedTouches[i].identifier === touchId) {
+                    touchLookActive = false;
+                    touchId = null;
+                    break;
+                }
+            }
+        });
     }
     
     // 初始化服务器配置
@@ -620,7 +971,9 @@ class PixelCS3D {
                 h: obj.h,
                 d: obj.d,
                 color: obj.color,
-                rotation: obj.rotation
+                rotation: obj.rotation,
+                textureType: obj.textureType,
+                type: obj.type
             });
         });
         return obstacles;
@@ -772,18 +1125,96 @@ class PixelCS3D {
     }
     
     updateCrosshair() {
+        // 准星始终保持在屏幕中心，不随后坐力移动
         const crosshair = document.getElementById('crosshair');
-        const offset = this.crosshairOffset * 50;
-        crosshair.style.transform = `translate(-50%, calc(-50% - ${offset}px))`;
+        crosshair.style.transform = `translate(-50%, -50%)`;
     }
     
-    addKillFeed(message) {
+    addKillFeed(message, type = 'system') {
         const feed = document.getElementById('killfeed');
         const msg = document.createElement('div');
         msg.className = 'kill-msg';
-        msg.textContent = message;
+        
+        // 根据类型添加不同样式
+        if (type === 'kill') {
+            msg.classList.add('kill-event');
+        } else if (type === 'headshot') {
+            msg.classList.add('headshot-event');
+        } else if (type === 'bomb') {
+            msg.classList.add('bomb-event');
+        } else {
+            msg.classList.add('system-event');
+        }
+        
+        msg.innerHTML = message;
         feed.appendChild(msg);
-        setTimeout(() => msg.remove(), 3000);
+        
+        // 限制最多显示6条
+        while (feed.children.length > 6) {
+            feed.removeChild(feed.firstChild);
+        }
+        
+        setTimeout(() => msg.remove(), 3500);
+    }
+    
+    // 格式化击杀消息
+    formatKillMessage(killer, victim, headshot, weapon) {
+        const killerTeam = killer.team === 't' ? 't-team' : '';
+        const victimTeam = victim.team === 't' ? 't-team' : '';
+        const hsIcon = headshot ? '<span class="hs-icon">💀</span>' : '';
+        
+        return `${hsIcon}<span class="killer-name ${killerTeam}">${killer.name}</span><span class="weapon-text">击杀</span><span class="victim-name ${victimTeam}">${victim.name}</span>`;
+    }
+    
+    // 检测准星瞄准的玩家
+    checkCrosshairTarget() {
+        if (!this.camera || this.isSpectating || this.buyMenuOpen || this.settingsMenuOpen) {
+            this.hideCrosshairTarget();
+            return;
+        }
+        
+        const raycaster = new THREE.Raycaster();
+        raycaster.setFromCamera(new THREE.Vector2(0, 0), this.camera);
+        raycaster.far = 500;
+        
+        let closestPlayer = null;
+        let closestDistance = Infinity;
+        
+        for (const id in this.playerMeshes) {
+            if (id === this.playerId) continue;
+            const mesh = this.playerMeshes[id];
+            if (!mesh || mesh.userData.isDead) continue;
+            
+            const intersects = raycaster.intersectObject(mesh, true);
+            if (intersects.length > 0 && intersects[0].distance < closestDistance) {
+                closestDistance = intersects[0].distance;
+                closestPlayer = this.players[id];
+            }
+        }
+        
+        if (closestPlayer && closestDistance < 200) {
+            this.showCrosshairTarget(closestPlayer);
+        } else {
+            this.hideCrosshairTarget();
+        }
+    }
+    
+    showCrosshairTarget(player) {
+        const targetEl = document.getElementById('crosshair-target');
+        if (!targetEl) return;
+        
+        const myTeam = this.selectedTeam;
+        const isEnemy = player.team !== myTeam;
+        
+        targetEl.textContent = player.name;
+        targetEl.className = 'visible ' + (isEnemy ? 'enemy' : 'friendly');
+    }
+    
+    hideCrosshairTarget() {
+        const targetEl = document.getElementById('crosshair-target');
+        if (targetEl) {
+            targetEl.className = '';
+        }
     }
     
     showKillFeedback(isHeadshot, isKnife, killStreak) {
@@ -1164,11 +1595,15 @@ class PixelCS3D {
             const hits = raycaster.intersectObjects(allParts);
             if (hits.length > 0) {
                 const hitPoint = hits[0].point;
-                this.createHitMarker();
+                this.createHitMarker(hitPoint);
                 this.createBloodEffect(hitPoint);
                 this.audio.playHitSound();
                 if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-                    this.ws.send(JSON.stringify({ action: 'hit_player', target_id: playerId, hit_height: hitPoint.y }));
+                    // 计算相对于玩家模型底部的高度
+                    const targetMesh = this.playerMeshes[playerId];
+                    const playerBaseY = targetMesh ? targetMesh.position.y : 0;
+                    const relativeHeight = hitPoint.y - playerBaseY;
+                    this.ws.send(JSON.stringify({ action: 'hit_player', target_id: playerId, hit_height: relativeHeight }));
                 }
                 break;
             }
@@ -1330,7 +1765,7 @@ class PixelCS3D {
                 setTimeout(() => {
                     this.createExplosion(grenade.position, isRemote);
                     this.scene.remove(grenade);
-                }, 1500);
+                }, 500);
             }
         };
         animateGrenade();
@@ -1525,12 +1960,14 @@ class PixelCS3D {
         }
         
         if (hitPlayerId && hitPoint) {
-            this.createHitMarker();
+            this.createHitMarker(hitPoint);
             this.createBloodEffect(hitPoint);
             this.audio.playHitSound();
             if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                // 计算相对于玩家模型底部的高度
                 const targetMesh = this.playerMeshes[hitPlayerId];
-                const relativeHeight = targetMesh ? hitPoint.y : hitPoint.y;
+                const playerBaseY = targetMesh ? targetMesh.position.y : 0;
+                const relativeHeight = hitPoint.y - playerBaseY;
                 this.ws.send(JSON.stringify({ action: 'hit_player', target_id: hitPlayerId, hit_height: relativeHeight }));
             }
         }
@@ -1538,10 +1975,27 @@ class PixelCS3D {
     }
 
     // ==================== 视觉效果 ====================
-    createHitMarker() {
+    createHitMarker(hitPoint = null) {
         const marker = document.createElement('div');
         marker.className = 'hit-marker';
         marker.innerHTML = '×';
+        
+        // 如果有击中点，计算屏幕位置
+        if (hitPoint && this.camera) {
+            const screenPos = hitPoint.clone().project(this.camera);
+            const gameContainer = document.getElementById('game');
+            const rect = gameContainer.getBoundingClientRect();
+            const x = (screenPos.x * 0.5 + 0.5) * rect.width;
+            const y = (-screenPos.y * 0.5 + 0.5) * rect.height;
+            
+            // 只有在屏幕范围内才显示在击中位置
+            if (x >= 0 && x <= rect.width && y >= 0 && y <= rect.height && screenPos.z < 1) {
+                marker.style.left = `${x}px`;
+                marker.style.top = `${y}px`;
+                marker.style.transform = 'translate(-50%, -50%)';
+            }
+        }
+        
         document.getElementById('game').appendChild(marker);
         setTimeout(() => marker.remove(), 200);
     }
@@ -1771,6 +2225,71 @@ class PixelCS3D {
     }
     
     startGame(name, roomId, isCreating) {
+        // 手机端竖屏时，先显示横屏提示
+        if (this.isMobile && window.innerHeight > window.innerWidth) {
+            this.pendingGameStart = { name, roomId, isCreating };
+            this.showRotateHint();
+            return;
+        }
+        
+        this.actualStartGame(name, roomId, isCreating);
+    }
+    
+    showRotateHint() {
+        // 显示自定义横屏提示
+        const hint = document.getElementById('rotate-screen-hint');
+        if (hint) {
+            hint.style.display = 'flex';
+            hint.innerHTML = `
+                <div class="rotate-icon">📱</div>
+                <div>请将手机横屏</div>
+                <div style="font-size: 16px; margin-top: 10px; opacity: 0.7;">横屏后自动进入游戏</div>
+            `;
+        }
+        
+        // 监听屏幕方向变化
+        const checkOrientation = () => {
+            if (window.innerWidth > window.innerHeight) {
+                // 已横屏，进入游戏
+                window.removeEventListener('resize', checkOrientation);
+                if (screen.orientation) {
+                    screen.orientation.removeEventListener('change', checkOrientation);
+                }
+                
+                if (hint) hint.style.display = 'none';
+                
+                if (this.pendingGameStart) {
+                    const { name, roomId, isCreating } = this.pendingGameStart;
+                    this.pendingGameStart = null;
+                    
+                    // 尝试全屏
+                    const elem = document.documentElement;
+                    if (elem.requestFullscreen) {
+                        elem.requestFullscreen().then(() => {
+                            this.actualStartGame(name, roomId, isCreating);
+                        }).catch(() => {
+                            this.actualStartGame(name, roomId, isCreating);
+                        });
+                    } else {
+                        this.actualStartGame(name, roomId, isCreating);
+                    }
+                }
+            }
+        };
+        
+        window.addEventListener('resize', checkOrientation);
+        if (screen.orientation) {
+            screen.orientation.addEventListener('change', checkOrientation);
+        }
+        
+        // 立即检查一次（可能已经是横屏）
+        setTimeout(checkOrientation, 100);
+    }
+    
+    actualStartGame(name, roomId, isCreating) {
+        // 添加游戏中标记，用于CSS横屏提示
+        document.body.classList.add('in-game');
+        
         document.getElementById('menu').style.display = 'none';
         document.getElementById('game').style.display = 'block';
         document.getElementById('target-kills').textContent = this.targetKills;
@@ -1800,7 +2319,14 @@ class PixelCS3D {
         }
         
         const elem = document.documentElement;
-        if (elem.requestFullscreen) elem.requestFullscreen().catch(() => {});
+        // 手机端尝试锁定横屏，PC端进入全屏
+        if (this.isMobile) {
+            if (screen.orientation && screen.orientation.lock) {
+                screen.orientation.lock('landscape').catch(() => {});
+            }
+        } else if (elem.requestFullscreen) {
+            elem.requestFullscreen().catch(() => {});
+        }
         
         this.audio.init();
         this.initThree();
@@ -1810,14 +2336,26 @@ class PixelCS3D {
         
         this.connect(name, roomId, isCreating);
         
-        setTimeout(() => { document.body.requestPointerLock(); }, 100);
+        // 手机端不需要指针锁定
+        if (!this.isMobile) {
+            setTimeout(() => { document.body.requestPointerLock(); }, 100);
+        }
         document.getElementById('backToMenu').addEventListener('click', () => this.backToMenu());
     }
     
     backToMenu() {
+        // 移除游戏中标记
+        document.body.classList.remove('in-game');
+        
         if (this.ws) this.ws.close();
         document.exitPointerLock();
         if (document.fullscreenElement) document.exitFullscreen();
+        
+        // 解锁屏幕方向
+        if (screen.orientation && screen.orientation.unlock) {
+            screen.orientation.unlock();
+        }
+        
         location.reload();
     }
     
@@ -1962,8 +2500,8 @@ class PixelCS3D {
                         const killer = this.players[hit.killer];
                         const victim = this.players[hit.victim];
                         if (killer && victim) {
-                            const hsText = hit.headshot ? ' [爆头]' : '';
-                            this.addKillFeed(`${killer.name} 击杀了 ${victim.name}${hsText}`);
+                            const killMsg = this.formatKillMessage(killer, victim, hit.headshot, hit.weapon || 'ak47');
+                            this.addKillFeed(killMsg, hit.headshot ? 'headshot' : 'kill');
                         }
                         if (hit.killer === this.playerId) {
                             this.createHitMarker();
@@ -2098,7 +2636,7 @@ class PixelCS3D {
         document.getElementById('plant-hint').style.display = 'none';
         this.createC4Model(data.position);
         this.audio.playC4PlantSound();
-        this.addKillFeed(`💣 C4已安放在 ${data.site} 点!`);
+        this.addKillFeed(`💣 C4已安放在 ${data.site} 点!`, 'bomb');
         if (this.selectedTeam === 'ct') this.showDefuseHint();
         // 下包后切换到主武器（如果是自己下的包）
         if (data.planter === this.playerId) {
@@ -2212,7 +2750,7 @@ class PixelCS3D {
         document.getElementById('defuse-hint').style.display = 'none';
         if (this.c4Model) { this.scene.remove(this.c4Model); this.c4Model = null; }
         this.audio.playC4DefusedSound();
-        this.addKillFeed('💚 C4已被拆除!');
+        this.addKillFeed('💚 C4已被拆除!', 'bomb');
     }
     
     onBombExploded(data) {
@@ -2223,7 +2761,7 @@ class PixelCS3D {
         if (this.c4Position) this.createC4Explosion(this.c4Position);
         if (this.c4Model) { this.scene.remove(this.c4Model); this.c4Model = null; }
         this.audio.playC4ExplodeSound();
-        this.addKillFeed('💥 C4已爆炸!');
+        this.addKillFeed('💥 C4已爆炸!', 'bomb');
     }
     
     createC4Explosion(position) {
@@ -2391,6 +2929,13 @@ class PixelCS3D {
         
         this.isSpectating = true;
         this.spectatingPlayerId = this.spectatorTargets[0];
+        
+        // 初始化观战视角参数
+        this.spectatorYaw = 0;
+        this.spectatorPitch = -0.3; // 稍微向下看
+        this.spectatorDistance = 20;
+        this.spectatorTargetPos = { x: 0, y: 0, z: 0 }; // 平滑跟随目标位置
+        
         this.showSpectatorUI();
         this.updateSpectatorView();
     }
@@ -2467,21 +3012,13 @@ class PixelCS3D {
     }
     
     updateSpectatorWeapon() {
+        // 第三人称观战模式不需要显示手持武器模型
         if (!this.isSpectating || !this.spectatingPlayerId) return;
         
-        const target = this.players[this.spectatingPlayerId];
-        if (!target) return;
-        
-        // 更新为被观战者的武器
-        const targetWeapon = target.weapon || 'ak47';
+        // 隐藏第一人称武器模型
         if (this.gunModel) {
-            this.camera.remove(this.gunModel);
+            this.gunModel.visible = false;
         }
-        this.weaponBuilder = new WeaponModelBuilder(target.team);
-        this.gunModel = this.weaponBuilder.createModel(targetWeapon);
-        this.gunBasePosition = this.gunModel.position.clone();
-        this.gunBaseRotation = this.gunModel.rotation.clone();
-        this.camera.add(this.gunModel);
     }
     
     hideSpectatorUI() {
@@ -2490,6 +3027,9 @@ class PixelCS3D {
             spectatorUI.style.display = 'none';
         }
         // 恢复自己的枪械模型
+        if (this.gunModel) {
+            this.gunModel.visible = true;
+        }
         this.updateGunModel();
     }
     
@@ -2502,20 +3042,37 @@ class PixelCS3D {
             return;
         }
         
-        // 直接使用玩家数据的位置（target.x是x坐标，target.y是z坐标）
+        // 目标位置
         const targetX = target.x;
-        const targetZ = target.y; // 注意：服务器的y是游戏中的z
+        const targetZ = target.y; // 服务器的y是游戏中的z
         const targetHeight = (target.height_offset || 0) + this.standingHeight;
         
-        // 跟随目标位置
-        this.camera.position.x = targetX;
-        this.camera.position.z = targetZ;
-        this.camera.position.y = targetHeight;
+        // 平滑跟随目标位置（减少抖动）
+        const smoothFactor = 0.15;
+        if (!this.spectatorTargetPos) {
+            this.spectatorTargetPos = { x: targetX, y: targetHeight, z: targetZ };
+        }
+        this.spectatorTargetPos.x += (targetX - this.spectatorTargetPos.x) * smoothFactor;
+        this.spectatorTargetPos.y += (targetHeight - this.spectatorTargetPos.y) * smoothFactor;
+        this.spectatorTargetPos.z += (targetZ - this.spectatorTargetPos.z) * smoothFactor;
         
-        // 跟随目标视角
-        this.yaw = -target.angle + Math.PI / 2;
-        this.camera.rotation.y = this.yaw;
-        this.camera.rotation.x = 0; // 保持水平视角
+        // 使用玩家自己的视角控制（yaw和pitch）
+        const distance = this.spectatorDistance || 20;
+        const yaw = this.yaw;
+        const pitch = Math.max(-Math.PI / 3, Math.min(Math.PI / 6, this.pitch));
+        
+        // 计算相机位置（围绕目标旋转）
+        const cameraX = this.spectatorTargetPos.x - Math.sin(yaw) * Math.cos(pitch) * distance;
+        const cameraZ = this.spectatorTargetPos.z - Math.cos(yaw) * Math.cos(pitch) * distance;
+        const cameraY = this.spectatorTargetPos.y - Math.sin(pitch) * distance + 5;
+        
+        // 设置相机位置
+        this.camera.position.x = cameraX;
+        this.camera.position.z = cameraZ;
+        this.camera.position.y = Math.max(2, cameraY); // 确保相机不会低于地面
+        
+        // 相机看向目标
+        this.camera.lookAt(this.spectatorTargetPos.x, this.spectatorTargetPos.y, this.spectatorTargetPos.z);
     }
     
     showDefuseHint() {
@@ -2848,6 +3405,22 @@ class PixelCS3D {
             const dz = mesh.userData.targetZ - mesh.position.z;
             const distance = Math.sqrt(dx * dx + dz * dz);
             
+            // 记录上一帧位置用于计算实际移动速度
+            if (!mesh.userData.lastPosX) {
+                mesh.userData.lastPosX = mesh.position.x;
+                mesh.userData.lastPosZ = mesh.position.z;
+            }
+            const actualDx = mesh.position.x - mesh.userData.lastPosX;
+            const actualDz = mesh.position.z - mesh.userData.lastPosZ;
+            const actualSpeed = Math.sqrt(actualDx * actualDx + actualDz * actualDz);
+            mesh.userData.lastPosX = mesh.position.x;
+            mesh.userData.lastPosZ = mesh.position.z;
+            
+            // 使用平滑的移动状态判断
+            if (!mesh.userData.smoothSpeed) mesh.userData.smoothSpeed = 0;
+            mesh.userData.smoothSpeed = mesh.userData.smoothSpeed * 0.8 + actualSpeed * 0.2;
+            const isMoving = mesh.userData.smoothSpeed > 0.05 || distance > 0.5;
+            
             if (distance > 50) {
                 mesh.position.x = mesh.userData.targetX;
                 mesh.position.z = mesh.userData.targetZ;
@@ -2856,7 +3429,24 @@ class PixelCS3D {
             } else {
                 mesh.position.x += dx * lerpFactor;
                 mesh.position.z += dz * lerpFactor;
-                mesh.position.y += (mesh.userData.targetY - mesh.position.y) * lerpFactor;
+                
+                // 走动动画 - 腿部摆动
+                if (isMoving) {
+                    if (!mesh.userData.walkPhase) mesh.userData.walkPhase = 0;
+                    mesh.userData.walkPhase += 0.25;
+                    
+                    // 使用新的腿部动画
+                    PlayerModel.animateWalk(mesh, mesh.userData.walkPhase);
+                    
+                    // Y轴位置平滑过渡
+                    mesh.position.y += (mesh.userData.targetY - mesh.position.y) * lerpFactor;
+                } else {
+                    mesh.position.y += (mesh.userData.targetY - mesh.position.y) * lerpFactor;
+                    // 重置腿部位置
+                    PlayerModel.resetLegs(mesh);
+                    mesh.userData.walkPhase = 0;
+                }
+                
                 let angleDiff = mesh.userData.targetAngle - mesh.rotation.y;
                 while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
                 while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
@@ -3144,7 +3734,14 @@ class PixelCS3D {
         }
         
         const baseMoveSpeed = this.isCrouching ? 10 : 18;
-        const moveSpeed = baseMoveSpeed * deltaTime;
+        // 武器移动速度调整：近战1.3倍，狙击枪0.8倍
+        let weaponSpeedMultiplier = 1.0;
+        if (this.currentWeapon === 'knife') {
+            weaponSpeedMultiplier = 1.3;
+        } else if (this.currentWeapon === 'awp') {
+            weaponSpeedMultiplier = 0.8;
+        }
+        const moveSpeed = baseMoveSpeed * deltaTime * weaponSpeedMultiplier;
         let dx = 0, dz = 0;
         
         if (this.keys['KeyW']) dz = -1;
@@ -3276,6 +3873,11 @@ class PixelCS3D {
         
         // 更新小地图
         if (this.minimap) this.minimap.update();
+        
+        // 每5帧检测一次准星目标（性能优化）
+        if (this.fpsFrameCount % 5 === 0) {
+            this.checkCrosshairTarget();
+        }
         
         // 更新C4闪光特效
         if (this.c4Planted && this.c4Model) {

@@ -2,12 +2,23 @@
 <html lang="zh">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="screen-orientation" content="landscape">
+    <meta name="x5-orientation" content="landscape">
+    <meta name="full-screen" content="yes">
+    <meta name="x5-fullscreen" content="true">
     <title>CS 1.6 像素版 3D</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect fill='%23333' width='32' height='32' rx='4'/><text x='16' y='22' font-size='16' font-family='Arial' font-weight='bold' fill='%23ff6600' text-anchor='middle'>CS</text></svg>">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <!-- 横屏提示 -->
+    <div id="rotate-screen-hint">
+        <div class="rotate-icon">📱</div>
+        <div>请将手机横屏</div>
+        <div style="font-size: 16px; margin-top: 10px; opacity: 0.7;">以获得最佳游戏体验</div>
+    </div>
+    
     <!-- 像素风格背景动画 -->
     <div id="pixel-bg">
         <canvas id="pixel-canvas"></canvas>
@@ -146,6 +157,7 @@
     
     <div id="game" style="display: none;">
         <div id="crosshair">+</div>
+        <div id="crosshair-target"></div>
         <div id="scope" style="display: none;"></div>
         
         <!-- 击杀反馈图标容器 -->
@@ -210,6 +222,35 @@
             <div id="freeze-countdown">准备阶段</div>
         </div>
         <div id="fps-counter">FPS: 0</div>
+        
+        <!-- 手机端虚拟控制器 -->
+        <div id="mobile-controls" style="display: none;">
+            <!-- 左侧移动摇杆 -->
+            <div id="joystick-container">
+                <div id="joystick-base">
+                    <div id="joystick-stick"></div>
+                </div>
+            </div>
+            <!-- 右侧按钮 -->
+            <div id="mobile-buttons">
+                <button id="mobile-shoot" class="mobile-btn shoot-btn">🔫</button>
+                <button id="mobile-scope" class="mobile-btn scope-btn">🎯</button>
+                <button id="mobile-reload" class="mobile-btn">R</button>
+                <button id="mobile-jump" class="mobile-btn">⬆</button>
+                <button id="mobile-crouch" class="mobile-btn">⬇</button>
+                <button id="mobile-switch" class="mobile-btn">Q</button>
+                <button id="mobile-buy" class="mobile-btn">B</button>
+                <button id="mobile-settings" class="mobile-btn">⚙</button>
+            </div>
+            <!-- 武器快捷栏 -->
+            <div id="mobile-weapon-bar">
+                <button class="weapon-slot" data-slot="1">1</button>
+                <button class="weapon-slot" data-slot="2">2</button>
+                <button class="weapon-slot" data-slot="3">🔪</button>
+                <button class="weapon-slot" data-slot="4">💣</button>
+            </div>
+        </div>
+        
         <div id="hud">
             <div id="health">HP: 100</div>
             <div id="weapon">AK-47</div>

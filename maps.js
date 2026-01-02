@@ -929,6 +929,45 @@ class MapBuilder {
         return MapCache.materials[cacheKey];
     }
     
+    // 根据纹理类型获取材质
+    getMaterialByType(color, textureType) {
+        const actualColor = color || 0x888888;
+        const cacheKey = `mat_${textureType}_${actualColor}`;
+        if (!MapCache.materials[cacheKey]) {
+            let texture;
+            switch (textureType) {
+                case 'wood':
+                    texture = this.createWoodTexture(actualColor);
+                    break;
+                case 'brick':
+                    texture = this.createBrickWallTexture(actualColor);
+                    break;
+                case 'concrete':
+                    texture = this.createConcreteTexture(actualColor);
+                    break;
+                case 'metal':
+                    texture = this.createMetalTexture(actualColor);
+                    break;
+                case 'woodDoor':
+                    texture = this.createWoodTexture(actualColor);
+                    break;
+                case 'barrel':
+                    texture = this.createMetalTexture(actualColor);
+                    break;
+                case 'sandbag':
+                    texture = this.createConcreteTexture(actualColor);
+                    break;
+                default:
+                    texture = this.getWallTexture(actualColor);
+            }
+            MapCache.materials[cacheKey] = new THREE.MeshLambertMaterial({ 
+                map: texture,
+                side: THREE.DoubleSide
+            });
+        }
+        return MapCache.materials[cacheKey];
+    }
+    
     // 获取简单颜色材质（用于边界墙）
     getSimpleMaterial(color) {
         const cacheKey = `mat_simple_${color}`;
@@ -970,9 +1009,17 @@ class MapBuilder {
         this.scene.add(floor);
         
         const self = this;
-        const createWall = (x, y, z, w, h, d, color = null, rotation = 0, isBoundary = false) => {
+        const createWall = (x, y, z, w, h, d, color = null, rotation = 0, isBoundary = false, textureType = null) => {
             const geomInfo = self.getGeometry(w, h, d);
-            const mat = isBoundary ? self.getSimpleMaterial(color) : self.getMaterial(color);
+            let mat;
+            if (isBoundary) {
+                mat = self.getSimpleMaterial(color);
+            } else if (textureType) {
+                // 使用指定的纹理类型
+                mat = self.getMaterialByType(color, textureType);
+            } else {
+                mat = self.getMaterial(color);
+            }
             const wall = new THREE.Mesh(geomInfo.geom, mat);
             wall.position.set(x, y, z);
             
@@ -1034,7 +1081,7 @@ class MapBuilder {
         
         // 地图特定障碍物 - 使用对应材质纹理
         mapConfig.obstacles.forEach(o => {
-            createWall(o.x, o.y, o.z, o.w, o.h, o.d, o.color, o.rotation || 0, false);
+            createWall(o.x, o.y, o.z, o.w, o.h, o.d, o.color, o.rotation || 0, false, o.textureType);
         });
         
         // 室内竞技场添加整个地图的屋顶

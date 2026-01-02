@@ -1463,7 +1463,8 @@ class MapEditor {
                 w: data.w,
                 h: data.h,
                 d: data.d,
-                color: data.color
+                color: data.color,
+                textureType: data.textureType
             };
             
             if (obj.rotation.y !== 0) {
