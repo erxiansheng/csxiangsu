@@ -1,6 +1,7 @@
 /**
  * ESA Pages 函数 - 地图 API
  * 路由: GET/POST /api/maps
+ * 使用 EdgeKV 边缘存储
  */
 
 const NAMESPACE = 'game-maps';
@@ -8,26 +9,19 @@ const NAMESPACE = 'game-maps';
 // 获取地图列表
 async function handleGet() {
     try {
-        // ESA 边缘函数使用全局 KV 对象，通过命名空间名称访问
-        const kv = KV(NAMESPACE);
-        const listResult = await kv.list({ prefix: 'map:' });
-        const maps = [];
-
-        if (listResult && listResult.keys) {
-            for (const key of listResult.keys) {
-                const mapData = await kv.get(key.name, { type: 'json' });
-                if (mapData) {
-                    maps.push({
-                        id: key.name.replace('map:', ''),
-                        name: mapData.name || key.name.replace('map:', ''),
-                        displayName: mapData.displayName || '未命名地图',
-                        updatedAt: mapData.updatedAt
-                    });
-                }
-            }
+        const edgeKV = new EdgeKV({ namespace: NAMESPACE });
+        
+        // 获取索引数据
+        const indexData = await edgeKV.get('maps:index', { type: 'json' });
+        
+        if (indexData === undefined) {
+            return new Response(JSON.stringify([]), {
+                headers: { 'Content-Type': 'application/json' }
+            });
         }
 
-        maps.sort((a, b) => {
+        // 按更新时间倒序排列
+        const maps = indexData.sort((a, b) => {
             if (!a.updatedAt) return 1;
             if (!b.updatedAt) return -1;
             return new Date(b.updatedAt) - new Date(a.updatedAt);
@@ -36,8 +30,8 @@ async function handleGet() {
         return new Response(JSON.stringify(maps), {
             headers: { 'Content-Type': 'application/json' }
         });
-    } catch (err) {
-        return new Response(JSON.stringify({ error: '获取列表失败: ' + err.message }), {
+    } catch (e) {
+        return new Response(JSON.stringify({ error: '获取列表失败: ' + e }), {
             status: 500,
             headers: { 'Content-Type': 'application/json' }
         });
@@ -56,12 +50,39 @@ async function handlePost(request) {
             });
         }
 
-        const kv = KV(NAMESPACE);
+        const edgeKV = new EdgeKV({ namespace: NAMESPACE });
         const mapId = mapData.name;
         const now = new Date().toISOString();
         mapData.updatedAt = now;
 
-        await kv.put(`map:${mapId}`, JSON.stringify(mapData));
+        // 保存地图数据
+        const putResult = await edgeKV.put(`map:${mapId}`, JSON.stringify(mapData));
+        
+        if (putResult !== undefined) {
+            return new Response(JSON.stringify({ error: '保存地图数据失败' }), {
+                status: 500,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
+        // 更新索引
+        let indexData = await edgeKV.get('maps:index', { type: 'json' }) || [];
+        const existingIndex = indexData.findIndex(m => m.id === mapId);
+        
+        const mapMeta = {
+            id: mapId,
+            name: mapId,
+            displayName: mapData.displayName || mapId,
+            updatedAt: now
+        };
+
+        if (existingIndex >= 0) {
+            indexData[existingIndex] = mapMeta;
+        } else {
+            indexData.push(mapMeta);
+        }
+
+        await edgeKV.put('maps:index', JSON.stringify(indexData));
 
         return new Response(JSON.stringify({
             success: true,
@@ -70,8 +91,8 @@ async function handlePost(request) {
         }), {
             headers: { 'Content-Type': 'application/json' }
         });
-    } catch (err) {
-        return new Response(JSON.stringify({ error: '保存失败: ' + err.message }), {
+    } catch (e) {
+        return new Response(JSON.stringify({ error: '保存失败: ' + e }), {
             status: 500,
             headers: { 'Content-Type': 'application/json' }
         });
