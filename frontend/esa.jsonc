@@ -1,6 +1,0 @@
-{
-  "entry": "./dist/functions/index.js",
-  "assets": {
-    "directory": "./dist"
-  }
-}
