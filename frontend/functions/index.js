@@ -4,25 +4,7 @@
  */
 
 const NAMESPACE = 'game-maps';
-
-// 调试信息
-let DEBUG_INFO = {
-    hasProcess: typeof process !== 'undefined',
-    hasProcessEnv: typeof process !== 'undefined' && !!process.env,
-    envKeys: [],
-    SAVE_PASSWORD: null
-};
-
-try {
-    if (typeof process !== 'undefined' && process.env) {
-        DEBUG_INFO.envKeys = Object.keys(process.env);
-        DEBUG_INFO.SAVE_PASSWORD = process.env.SAVE_PASSWORD;
-    }
-} catch (e) {
-    DEBUG_INFO.error = e.message;
-}
-
-const SAVE_PASSWORD = DEBUG_INFO.SAVE_PASSWORD;
+const SAVE_PASSWORD = '123';
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -178,13 +160,9 @@ async function saveMap(request) {
     try {
         const mapData = await request.json();
         
-        // 验证密码 - 严格比较
+        // 验证密码
         if (!mapData.password || String(mapData.password).trim() !== SAVE_PASSWORD) {
-            return new Response(JSON.stringify({ 
-                error: '密码错误',
-                debug: DEBUG_INFO,
-                inputPassword: mapData.password
-            }), {
+            return new Response(JSON.stringify({ error: '密码错误' }), {
                 status: 403,
                 headers: corsHeaders
             });
