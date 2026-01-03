@@ -2,8 +2,5 @@
   "entry": "./dist/functions/index.js",
   "assets": {
     "directory": "./dist"
-  },
-  "env": {
-    "SAVE_PASSWORD": "6666"
   }
 }
