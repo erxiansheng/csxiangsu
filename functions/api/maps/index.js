@@ -38,7 +38,7 @@ async function handleGet() {
         const edgeKV = new EdgeKV({ namespace: NAMESPACE });
         const value = await edgeKV.get('maps:index', { type: 'json' });
         
-        if (value === undefined) {
+        if (!value || !Array.isArray(value)) {
             return new Response(JSON.stringify([]), { headers: corsHeaders });
         }
 
@@ -79,7 +79,7 @@ async function handlePost(request) {
 
         // 更新索引
         let indexData = await edgeKV.get('maps:index', { type: 'json' });
-        if (indexData === undefined) {
+        if (!indexData || !Array.isArray(indexData)) {
             indexData = [];
         }
         

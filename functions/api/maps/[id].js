@@ -75,7 +75,7 @@ async function handleDelete(mapId) {
         if (result) {
             // 更新索引
             let indexData = await edgeKV.get('maps:index', { type: 'json' });
-            if (indexData !== undefined) {
+            if (indexData && Array.isArray(indexData)) {
                 indexData = indexData.filter(m => m.id !== mapId);
                 await edgeKV.put('maps:index', JSON.stringify(indexData));
             }

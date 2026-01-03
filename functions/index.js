@@ -61,7 +61,8 @@ async function getMapList() {
         const edgeKV = new EdgeKV({ namespace: NAMESPACE });
         const value = await edgeKV.get('maps:index', { type: 'json' });
         
-        if (value === undefined) {
+        // key 不存在时可能返回 undefined 或 null
+        if (!value) {
             return new Response(JSON.stringify([]), { headers: corsHeaders });
         }
 
@@ -86,7 +87,7 @@ async function getMap(mapId) {
         const edgeKV = new EdgeKV({ namespace: NAMESPACE });
         const value = await edgeKV.get('map:' + mapId, { type: 'json' });
 
-        if (value === undefined) {
+        if (!value) {
             return new Response(JSON.stringify({ error: '地图不存在' }), {
                 status: 404,
                 headers: corsHeaders
@@ -124,7 +125,7 @@ async function saveMap(request) {
 
         // 更新索引
         let indexData = await edgeKV.get('maps:index', { type: 'json' });
-        if (indexData === undefined) {
+        if (!indexData) {
             indexData = [];
         }
         
@@ -166,7 +167,7 @@ async function deleteMap(mapId) {
         if (result) {
             // 更新索引
             let indexData = await edgeKV.get('maps:index', { type: 'json' });
-            if (indexData !== undefined) {
+            if (indexData) {
                 indexData = indexData.filter(m => m.id !== mapId);
                 await edgeKV.put('maps:index', JSON.stringify(indexData));
             }
