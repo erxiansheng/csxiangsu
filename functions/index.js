@@ -18,6 +18,10 @@ async function handleRequest(request) {
     const url = new URL(request.url);
     const path = url.pathname;
     const method = request.method;
+    
+    // 调试：输出环境变量
+    console.log('ENV:', JSON.stringify(process.env));
+    console.log('SAVE_PASSWORD:', SAVE_PASSWORD);
 
     // 处理 CORS 预检请求
     if (method === 'OPTIONS') {
