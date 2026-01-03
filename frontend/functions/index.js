@@ -5,11 +5,11 @@
 
 const NAMESPACE = 'game-maps';
 
-// 获取保存密码 - 在运行时尝试从环境变量读取
-function getSavePassword() {
-    // 仅保留标准Node.js方式
-    return process.env.SAVE_PASSWORD || '123';
-}
+// 获取保存密码 - ESA 支持 process.env
+// 需要在 ESA 控制台配置环境变量 SAVE_PASSWORD
+const SAVE_PASSWORD = (typeof process !== 'undefined' && process.env) 
+    ? process.env.SAVE_PASSWORD 
+    : undefined;
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -164,9 +164,6 @@ async function likeMap(request) {
 async function saveMap(request) {
     try {
         const mapData = await request.json();
-        
-        // 在运行时获取密码
-        const SAVE_PASSWORD = getSavePassword();
         
         // 验证密码 - 严格比较
         if (!mapData.password || String(mapData.password).trim() !== SAVE_PASSWORD) {
