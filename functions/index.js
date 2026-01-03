@@ -4,8 +4,22 @@
  */
 
 const NAMESPACE = 'game-maps';
-// 密码必须从 esa.jsonc 或 ESA 控制台环境变量配置
-const SAVE_PASSWORD = process.env.SAVE_PASSWORD;
+
+// 获取保存密码 - 在运行时尝试从环境变量读取
+function getSavePassword() {
+    // 尝试多种方式获取环境变量
+    if (typeof process !== 'undefined' && process.env && process.env.SAVE_PASSWORD) {
+        return process.env.SAVE_PASSWORD;
+    }
+    if (typeof globalThis !== 'undefined' && globalThis.process && globalThis.process.env && globalThis.process.env.SAVE_PASSWORD) {
+        return globalThis.process.env.SAVE_PASSWORD;
+    }
+    if (typeof ENV !== 'undefined' && ENV.SAVE_PASSWORD) {
+        return ENV.SAVE_PASSWORD;
+    }
+    // 默认密码
+    return '123';
+}
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -18,10 +32,6 @@ async function handleRequest(request) {
     const url = new URL(request.url);
     const path = url.pathname;
     const method = request.method;
-    
-    // 调试：输出环境变量
-    console.log('ENV:', JSON.stringify(process.env));
-    console.log('SAVE_PASSWORD:', SAVE_PASSWORD);
 
     // 处理 CORS 预检请求
     if (method === 'OPTIONS') {
@@ -164,6 +174,9 @@ async function likeMap(request) {
 async function saveMap(request) {
     try {
         const mapData = await request.json();
+        
+        // 在运行时获取密码
+        const SAVE_PASSWORD = getSavePassword();
         
         // 验证密码 - 严格比较
         if (!mapData.password || String(mapData.password).trim() !== SAVE_PASSWORD) {
