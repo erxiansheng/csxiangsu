@@ -2270,3 +2270,63 @@ body {
     margin-top: 20px;
     justify-content: center;
 }
+
+
+/* 缩略图预览弹窗 */
+#thumbnail-preview {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.9);
+    z-index: 2000;
+    justify-content: center;
+    align-items: center;
+}
+
+#thumbnail-preview.active {
+    display: flex;
+}
+
+.thumb-preview-content {
+    position: relative;
+    max-width: 90vw;
+    max-height: 90vh;
+}
+
+.thumb-preview-content img {
+    max-width: 90vw;
+    max-height: 90vh;
+    border-radius: 8px;
+    box-shadow: 0 0 30px rgba(0,0,0,0.5);
+}
+
+.thumb-preview-close {
+    position: absolute;
+    top: -15px;
+    right: -15px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #e94560;
+    border: none;
+    color: #fff;
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.thumb-preview-close:hover {
+    background: #ff6b6b;
+}
+
+/* 云端地图缩略图悬停效果 */
+.cloud-map-thumb[data-thumb]:hover {
+    opacity: 0.8;
+    transform: scale(1.05);
+    transition: all 0.2s;
+}

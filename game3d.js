@@ -1040,19 +1040,30 @@ class PixelCS3D {
                 const thumbnail = map.thumbnail || '';
                 
                 item.innerHTML = `
-                    ${thumbnail ? `<div class="cloud-map-thumb"><img src="${thumbnail}" alt=""></div>` : '<div class="cloud-map-thumb no-thumb">无预览</div>'}
+                    ${thumbnail ? `<div class="cloud-map-thumb" data-thumb="${thumbnail}"><img src="${thumbnail}" alt=""></div>` : '<div class="cloud-map-thumb no-thumb">无预览</div>'}
                     <div class="cloud-map-item-info">
                         <div class="cloud-map-item-name">${this.escapeHtml(map.displayName || map.name)}</div>
                         <div class="cloud-map-item-id">${this.escapeHtml(map.id)}</div>
                     </div>
                     <div class="cloud-map-item-actions">
                         <button class="pixel-btn small cloud-like-btn" data-id="${this.escapeHtml(map.id)}">👍 <span class="like-count">${likes}</span></button>
+                        <button class="pixel-btn small primary cloud-select-btn">选择</button>
                     </div>
                 `;
                 
-                // 点击地图项选择地图
+                // 点击缩略图放大预览
+                const thumbEl = item.querySelector('.cloud-map-thumb[data-thumb]');
+                if (thumbEl) {
+                    thumbEl.style.cursor = 'pointer';
+                    thumbEl.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        this.showThumbnailPreview(thumbnail);
+                    });
+                }
+                
+                // 点击地图信息或选择按钮选择地图
                 item.querySelector('.cloud-map-item-info').addEventListener('click', () => this.selectCloudMap(map.id));
-                item.querySelector('.cloud-map-thumb').addEventListener('click', () => this.selectCloudMap(map.id));
+                item.querySelector('.cloud-select-btn').addEventListener('click', () => this.selectCloudMap(map.id));
                 
                 // 点赞按钮
                 item.querySelector('.cloud-like-btn').addEventListener('click', async (e) => {
@@ -1100,6 +1111,29 @@ class PixelCS3D {
         const div = document.createElement('div');
         div.textContent = str || '';
         return div.innerHTML;
+    }
+    
+    // 显示缩略图预览
+    showThumbnailPreview(src) {
+        let preview = document.getElementById('thumbnail-preview');
+        if (!preview) {
+            preview = document.createElement('div');
+            preview.id = 'thumbnail-preview';
+            preview.innerHTML = `
+                <div class="thumb-preview-content">
+                    <img src="" alt="地图预览">
+                    <button class="thumb-preview-close">✕</button>
+                </div>
+            `;
+            preview.addEventListener('click', (e) => {
+                if (e.target === preview || e.target.classList.contains('thumb-preview-close')) {
+                    preview.classList.remove('active');
+                }
+            });
+            document.body.appendChild(preview);
+        }
+        preview.querySelector('img').src = src;
+        preview.classList.add('active');
     }
     
     // 校验自定义地图格式

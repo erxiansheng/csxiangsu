@@ -2,9 +2,9 @@
   // ESA Pages 配置文件
   "entry": "./functions/index.js",
   "assets": {
-    "directory": ".",
-    "env": {
-      "SAVE_PASSWORD": "123"
-    }
+    "directory": "."
+  },
+  "env": {
+    "SAVE_PASSWORD": "123"
   }
 }
