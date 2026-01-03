@@ -4,9 +4,7 @@
  */
 
 const NAMESPACE = 'game-maps';
-
-// 从环境变量获取保存密码，默认值为 '123'（内测阶段）
-const SAVE_PASSWORD = process.env.SAVE_PASSWORD || '123';
+const SAVE_PASSWORD = process.env.SAVE_PASSWORD || '123'; // 优先使用环境变量，默认123
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -163,8 +161,7 @@ async function saveMap(request) {
         const mapData = await request.json();
         
         // 验证密码 - 严格比较
-        const correctPassword = process.env.SAVE_PASSWORD || '123';
-        if (!mapData.password || String(mapData.password).trim() !== String(correctPassword).trim()) {
+        if (!mapData.password || String(mapData.password).trim() !== SAVE_PASSWORD) {
             return new Response(JSON.stringify({ error: '密码错误' }), {
                 status: 403,
                 headers: corsHeaders
