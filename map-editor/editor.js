@@ -2242,33 +2242,39 @@ class MapEditor {
     // 生成地图缩略图
     generateThumbnail() {
         try {
+            // 保存当前渲染器尺寸
+            const oldWidth = this.renderer.domElement.width;
+            const oldHeight = this.renderer.domElement.height;
+            
             // 保存当前相机状态
             const oldPos = this.camera.position.clone();
-            const oldTarget = this.cameraTarget.clone();
-            const oldAngleX = this.cameraAngleX;
-            const oldAngleY = this.cameraAngleY;
-            const oldDistance = this.cameraDistance;
+            const oldAspect = this.camera.aspect;
             
             // 获取地图大小
             const mapSize = parseInt(document.getElementById('mapSize').value) || 300;
             
-            // 设置俯视角度，根据地图大小调整高度
-            const cameraHeight = mapSize * 1.5;
-            this.camera.position.set(0, cameraHeight, cameraHeight * 0.3);
+            // 设置正方形渲染尺寸
+            const thumbSize = 256;
+            this.renderer.setSize(thumbSize, thumbSize);
+            this.camera.aspect = 1;
+            this.camera.updateProjectionMatrix();
+            
+            // 设置正俯视角度
+            const cameraHeight = mapSize * 1.8;
+            this.camera.position.set(0, cameraHeight, 0.01);
             this.camera.lookAt(0, 0, 0);
             
             // 强制渲染一帧
             this.renderer.render(this.scene, this.camera);
             
-            // 获取图像数据（使用较低质量减少数据量）
-            const dataUrl = this.renderer.domElement.toDataURL('image/jpeg', 0.4);
+            // 获取图像数据
+            const dataUrl = this.renderer.domElement.toDataURL('image/jpeg', 0.6);
             
-            // 恢复相机状态
+            // 恢复渲染器和相机状态
+            this.renderer.setSize(oldWidth, oldHeight);
+            this.camera.aspect = oldAspect;
+            this.camera.updateProjectionMatrix();
             this.camera.position.copy(oldPos);
-            this.cameraTarget.copy(oldTarget);
-            this.cameraAngleX = oldAngleX;
-            this.cameraAngleY = oldAngleY;
-            this.cameraDistance = oldDistance;
             this.updateCameraPosition();
             
             console.log('缩略图生成成功，大小:', Math.round(dataUrl.length / 1024), 'KB');
@@ -2320,14 +2326,14 @@ class MapEditor {
                 const thumbnail = map.thumbnail || '';
                 
                 item.innerHTML = `
-                    ${thumbnail ? `<div class="cloud-map-thumbnail"><img src="${thumbnail}" alt="缩略图"></div>` : '<div class="cloud-map-thumbnail no-thumb">无预览</div>'}
+                    ${thumbnail ? `<div class="cloud-map-thumbnail" data-thumb="${thumbnail}"><img src="${thumbnail}" alt="缩略图"></div>` : '<div class="cloud-map-thumbnail no-thumb">无预览</div>'}
                     <div class="cloud-map-info">
                         <div class="cloud-map-name">${this.escapeHtml(map.displayName || map.name)}</div>
                         <div class="cloud-map-id">${this.escapeHtml(map.id)}</div>
                         ${timeStr ? `<div class="cloud-map-time">${timeStr}</div>` : ''}
                     </div>
                     <div class="cloud-map-actions">
-                        <button class="tool-btn cloud-like-btn" data-id="${this.escapeHtml(map.id)}">👍 <span class="like-count">${likes}</span></button>
+                        <button class="tool-btn cloud-like-btn ${this.hasLiked(map.id) ? 'liked' : ''}" data-id="${this.escapeHtml(map.id)}" ${this.hasLiked(map.id) ? 'disabled' : ''}>👍 <span class="like-count">${likes}</span></button>
                         <button class="tool-btn primary cloud-load-btn" data-id="${this.escapeHtml(map.id)}">加载</button>
                     </div>
                 `;
@@ -2344,6 +2350,12 @@ class MapEditor {
                 btn.addEventListener('click', () => this.likeCloudMap(btn.dataset.id, btn));
             });
             
+            // 绑定缩略图点击放大事件
+            listEl.querySelectorAll('.cloud-map-thumbnail[data-thumb]').forEach(thumb => {
+                thumb.style.cursor = 'pointer';
+                thumb.addEventListener('click', () => this.showThumbnailPreview(thumb.dataset.thumb));
+            });
+            
         } catch (err) {
             loadingEl.style.display = 'none';
             errorEl.textContent = err.message;
@@ -2353,6 +2365,12 @@ class MapEditor {
     
     // 点赞云端地图
     async likeCloudMap(mapId, btn) {
+        // 检查是否已点赞
+        if (this.hasLiked(mapId)) {
+            alert('你已经点赞过这个地图了');
+            return;
+        }
+        
         try {
             btn.disabled = true;
             const result = await MapCloudService.likeMap(mapId);
@@ -2360,11 +2378,58 @@ class MapEditor {
             if (countEl) {
                 countEl.textContent = result.likes;
             }
+            // 记录已点赞
+            this.markAsLiked(mapId);
+            btn.classList.add('liked');
         } catch (err) {
             alert('点赞失败: ' + err.message);
-        } finally {
             btn.disabled = false;
         }
+    }
+    
+    // 检查是否已点赞
+    hasLiked(mapId) {
+        try {
+            const liked = JSON.parse(localStorage.getItem('likedMaps') || '[]');
+            return liked.includes(mapId);
+        } catch {
+            return false;
+        }
+    }
+    
+    // 标记为已点赞
+    markAsLiked(mapId) {
+        try {
+            const liked = JSON.parse(localStorage.getItem('likedMaps') || '[]');
+            if (!liked.includes(mapId)) {
+                liked.push(mapId);
+                localStorage.setItem('likedMaps', JSON.stringify(liked));
+            }
+        } catch {}
+    }
+    
+    // 显示缩略图预览
+    showThumbnailPreview(src) {
+        // 创建预览弹窗
+        let preview = document.getElementById('thumbnail-preview');
+        if (!preview) {
+            preview = document.createElement('div');
+            preview.id = 'thumbnail-preview';
+            preview.innerHTML = `
+                <div class="thumb-preview-content">
+                    <img src="" alt="地图预览">
+                    <button class="thumb-preview-close">✕</button>
+                </div>
+            `;
+            preview.addEventListener('click', (e) => {
+                if (e.target === preview || e.target.classList.contains('thumb-preview-close')) {
+                    preview.classList.remove('active');
+                }
+            });
+            document.body.appendChild(preview);
+        }
+        preview.querySelector('img').src = src;
+        preview.classList.add('active');
     }
     
     // 加载云端地图

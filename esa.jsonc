@@ -1,4 +1,7 @@
 {
   // ESA Pages 配置文件
-  "entry": "./functions/index.js"
+  "entry": "./functions/index.js",
+  "env": {
+    "SAVE_PASSWORD": "123"
+  }
 }
