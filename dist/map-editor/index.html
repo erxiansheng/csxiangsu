@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CS 地图编辑器</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+<div id="toolbar">
+<div class="toolbar-section">
+<span class="toolbar-title">CS 地图编辑器</span>
+</div>
+<div class="toolbar-section">
+<button id="newMap" class="tool-btn">新建</button>
+<button id="saveMap" class="tool-btn">保存JSON</button>
+<button id="exportCode" class="tool-btn">导出代码</button>
+<button id="loadMap" class="tool-btn">加载文件</button>
+<button id="loadPreset" class="tool-btn">预设地图</button>
+<button id="testMap" class="tool-btn">测试视角</button>
+</div>
+<div class="toolbar-section cloud-section">
+<button id="cloudSave" class="tool-btn primary">☁️ 保存云端</button>
+<button id="cloudLoad" class="tool-btn">☁️ 云端地图</button>
+</div>
+<div class="toolbar-section">
+<button id="addWalls" class="tool-btn">一键围墙</button>
+<button id="rotateMap90" class="tool-btn">🔄 整体旋转90°</button>
+<button id="eraserTool" class="tool-btn">🧹 橡皮擦</button>
+<button id="undoBtn" class="tool-btn">↩ 撤回</button>
+</div>
+<div class="toolbar-section">
+<label>地图ID: <input type="text" id="mapName" value="custom_map" style="width:100px;" /></label>
+<label>显示名称: <input type="text" id="mapDisplayName" value="自定义地图" /></label>
+<label>地图大小: <input type="number" id="mapSize" value="300" min="100" max="500" style="width:80px;" /></label>
+<label>游戏模式: 
+<select id="gameMode" multiple size="2">
+<option value="deathmatch">团队竞技</option>
+<option value="defuse">爆破模式</option>
+</select>
+</label>
+</div>
+</div>
+<div id="preset-modal" class="modal">
+<div class="modal-content" style="width:400px;">
+<h3>选择预设地图</h3>
+<div id="preset-list">
+<div class="preset-item" data-map="desert_map">
+<div class="preset-icon">🏜️</div>
+<div class="preset-info">
+<div class="preset-name">沙漠竞技场</div>
+<div class="preset-desc">沙漠风格对战地图</div>
+</div>
+</div>
+</div>
+<div class="modal-buttons">
+<button id="close-preset-modal" class="tool-btn">取消</button>
+</div>
+</div>
+</div>
+<div id="main-content">
+<div id="sidebar">
+<h3>物件列表</h3>
+<div class="object-category">
+<h4>基础建筑</h4>
+<div class="object-item" data-type="floor" draggable="true">
+<div class="preview floor"></div>
+<span>地板</span>
+</div>
+<div class="object-item" data-type="wall" draggable="true">
+<div class="preview wall"></div>
+<span>墙面</span>
+</div>
+<div class="object-item" data-type="roof" draggable="true">
+<div class="preview roof"></div>
+<span>房顶</span>
+</div>
+<div class="object-item" data-type="box" draggable="true">
+<div class="preview box"></div>
+<span>箱子</span>
+</div>
+<div class="object-item" data-type="crate" draggable="true">
+<div class="preview crate"></div>
+<span>木箱</span>
+</div>
+<div class="object-item" data-type="door" draggable="true">
+<div class="preview door"></div>
+<span>门</span>
+</div>
+</div>
+<div class="object-category">
+<h4>游戏点位</h4>
+<div class="object-item" data-type="bombsite_a" draggable="true">
+<div class="preview site-a"></div>
+<span>A点</span>
+</div>
+<div class="object-item" data-type="bombsite_b" draggable="true">
+<div class="preview site-b"></div>
+<span>B点</span>
+</div>
+<div class="object-item" data-type="spawn_ct" draggable="true">
+<div class="preview spawn-ct"></div>
+<span>CT复活点</span>
+</div>
+<div class="object-item" data-type="spawn_t" draggable="true">
+<div class="preview spawn-t"></div>
+<span>T复活点</span>
+</div>
+</div>
+</div>
+<div id="viewport">
+<canvas id="canvas"></canvas>
+<div id="coords">X: 0, Y: 0, Z: 0</div>
+<div id="help">
+WASD: 移动 | 鼠标右键: 旋转视角 | 滚轮: 缩放 | 左键: 选择/放置 | Delete: 删除 | R: 旋转物件
+</div>
+</div>
+<div id="properties">
+<h3>属性</h3>
+<div id="no-selection">未选中物件</div>
+<div id="prop-panel" style="display:none;">
+<div class="prop-group">
+<label>类型</label>
+<span id="prop-type">-</span>
+</div>
+<div class="prop-group">
+<label>位置 X</label>
+<input type="number" id="prop-x" step="1" />
+</div>
+<div class="prop-group">
+<label>位置 Y</label>
+<input type="number" id="prop-y" step="1" />
+</div>
+<div class="prop-group">
+<label>位置 Z</label>
+<input type="number" id="prop-z" step="1" />
+</div>
+<div class="prop-group">
+<label>宽度</label>
+<input type="number" id="prop-w" step="1" min="1" />
+</div>
+<div class="prop-group">
+<label>高度</label>
+<input type="number" id="prop-h" step="1" min="1" />
+</div>
+<div class="prop-group">
+<label>深度</label>
+<input type="number" id="prop-d" step="1" min="1" />
+</div>
+<div class="prop-group">
+<label>旋转 Y</label>
+<input type="number" id="prop-ry" step="15" />
+</div>
+<div class="prop-group">
+<label>颜色</label>
+<input type="color" id="prop-color" />
+</div>
+<button id="delete-obj" class="tool-btn danger">删除物件</button>
+<button id="duplicate-obj" class="tool-btn">复制物件</button>
+</div>
+</div>
+</div>
+<div id="code-modal" class="modal">
+<div class="modal-content">
+<h3>地图代码</h3>
+<p>复制以下代码到 maps.js 的 MAP_CONFIGS 中即可使用</p>
+<textarea id="code-output" readonly></textarea>
+<div class="modal-buttons">
+<button id="copy-code" class="tool-btn primary">复制代码</button>
+<button id="close-modal" class="tool-btn">关闭</button>
+</div>
+</div>
+</div>
+<div id="cloud-modal" class="modal">
+<div class="modal-content" style="width:500px;">
+<h3>☁️ 云端地图</h3>
+<div id="cloud-loading" class="cloud-status">加载中...</div>
+<div id="cloud-error" class="cloud-status error" style="display:none;"></div>
+<div id="cloud-empty" class="cloud-status" style="display:none;">暂无云端地图</div>
+<div id="cloud-list"></div>
+<div class="modal-buttons">
+<button id="cloud-refresh" class="tool-btn">🔄 刷新</button>
+<button id="close-cloud-modal" class="tool-btn">关闭</button>
+</div>
+</div>
+</div>
+<div id="cloud-save-modal" class="modal">
+<div class="modal-content" style="width:400px;">
+<h3>☁️ 保存到云端</h3>
+<p>确认将当前地图保存到云端？</p>
+<div class="cloud-save-info">
+<div class="prop-group">
+<label>地图ID</label>
+<span id="cloud-save-id">-</span>
+</div>
+<div class="prop-group">
+<label>显示名称</label>
+<span id="cloud-save-name">-</span>
+</div>
+<div class="prop-group">
+<label>物件数量</label>
+<span id="cloud-save-count">-</span>
+</div>
+<div class="prop-group">
+<label>保存密码</label>
+<input type="password" id="cloud-save-password" value="123" placeholder="请输入密码">
+</div>
+</div>
+<div id="cloud-save-status" class="cloud-status" style="display:none;"></div>
+<div class="modal-buttons">
+<button id="confirm-cloud-save" class="tool-btn primary">确认保存</button>
+<button id="close-cloud-save-modal" class="tool-btn">取消</button>
+</div>
+</div>
+</div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="../map-cloud.js"></script>
+<script src="editor.js"></script>
+</body>
+</html>
