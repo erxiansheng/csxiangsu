@@ -1,0 +1,7 @@
+{
+  // ESA Pages 配置文件
+  "entry": "./functions",
+  "routes": {
+    "/api/*": "functions"
+  }
+}
