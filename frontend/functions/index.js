@@ -7,18 +7,8 @@ const NAMESPACE = 'game-maps';
 
 // 获取保存密码 - 在运行时尝试从环境变量读取
 function getSavePassword() {
-    // 尝试多种方式获取环境变量
-    if (typeof process !== 'undefined' && process.env && process.env.SAVE_PASSWORD) {
-        return process.env.SAVE_PASSWORD;
-    }
-    if (typeof globalThis !== 'undefined' && globalThis.process && globalThis.process.env && globalThis.process.env.SAVE_PASSWORD) {
-        return globalThis.process.env.SAVE_PASSWORD;
-    }
-    if (typeof ENV !== 'undefined' && ENV.SAVE_PASSWORD) {
-        return ENV.SAVE_PASSWORD;
-    }
-    // 默认密码
-    return '123';
+    // 仅保留标准Node.js方式
+    return process.env.SAVE_PASSWORD || '123';
 }
 
 const corsHeaders = {
