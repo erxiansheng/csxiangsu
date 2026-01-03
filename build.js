@@ -20,7 +20,7 @@ const terserOptions = {
         passes: 2
     },
     mangle: {
-        toplevel: true,
+        toplevel: false,  // 不混淆顶级变量，避免多文件冲突
         properties: {
             regex: /^_/
         },
