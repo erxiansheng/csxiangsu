@@ -4,10 +4,8 @@
  */
 
 const NAMESPACE = 'game-maps';
-
-const SAVE_PASSWORD = (typeof process !== 'undefined' && process.env && process.env.SAVE_PASSWORD) 
-    ? process.env.SAVE_PASSWORD 
-    : '123';
+// 密码必须从 esa.jsonc 或 ESA 控制台环境变量配置
+const SAVE_PASSWORD = process.env.SAVE_PASSWORD;
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
