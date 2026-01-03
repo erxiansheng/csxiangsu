@@ -51,28 +51,19 @@ const MapCloudService = {
     // 点赞地图
     async likeMap(mapId) {
         try {
-            const res = await fetch(`${this.basePath}/${encodeURIComponent(mapId)}`, {
-                method: 'POST'
+            const res = await fetch(`${this.basePath}/like`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ mapId })
             });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            return await res.json();
+            const result = await res.json();
+            if (!res.ok) {
+                throw new Error(result.error || `HTTP ${res.status}`);
+            }
+            return result;
         } catch (err) {
             console.error('点赞失败:', err);
             throw new Error('点赞失败，请稍后重试');
-        }
-    },
-
-    // 删除云端地图
-    async deleteMap(mapId) {
-        try {
-            const res = await fetch(`${this.basePath}/${encodeURIComponent(mapId)}`, {
-                method: 'DELETE'
-            });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            return await res.json();
-        } catch (err) {
-            console.error('删除地图失败:', err);
-            throw new Error('删除失败，请检查网络连接');
         }
     }
 };

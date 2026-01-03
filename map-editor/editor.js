@@ -2315,20 +2315,15 @@ class MapEditor {
                     <div class="cloud-map-actions">
                         <button class="tool-btn cloud-like-btn" data-id="${this.escapeHtml(map.id)}">👍 <span class="like-count">${likes}</span></button>
                         <button class="tool-btn primary cloud-load-btn" data-id="${this.escapeHtml(map.id)}">加载</button>
-                        <button class="tool-btn danger cloud-delete-btn" data-id="${this.escapeHtml(map.id)}">删除</button>
                     </div>
                 `;
                 
                 listEl.appendChild(item);
             });
             
-            // 绑定加载和删除按钮事件
+            // 绑定加载按钮事件
             listEl.querySelectorAll('.cloud-load-btn').forEach(btn => {
                 btn.addEventListener('click', () => this.loadCloudMap(btn.dataset.id));
-            });
-            
-            listEl.querySelectorAll('.cloud-delete-btn').forEach(btn => {
-                btn.addEventListener('click', () => this.deleteCloudMap(btn.dataset.id));
             });
             
             listEl.querySelectorAll('.cloud-like-btn').forEach(btn => {
