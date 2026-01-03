@@ -12,7 +12,7 @@ const MapConfigs = {
     'indoor': {
         displayName: '室内竞技场 (Indoor)',  // 地图显示名称
         gameMode: ['deathmatch'],  // 支持的游戏模式
-        floorColor1: '#8b7355', floorColor2: '#7a6245',  // 温暖的木地板色
+        floorColor1: '#c4a574', floorColor2: '#a68b5b',  // 沙黄色棋盘格
         wallColor1: '#c9a86c', wallColor2: '#a08050',    // 暖色墙壁
         skyColor: 0x87ceeb,  // 明亮的天空蓝
         obstacles: [
@@ -129,8 +129,8 @@ const MapConfigs = {
     'custom_shamo': {
         displayName: '沙漠灰',
         gameMode: ['defuse'],
-        floorColor1: '#8b7355',
-        floorColor2: '#7a6245',
+        floorColor1: '#c4a574',
+        floorColor2: '#a68b5b',
         wallColor1: '#95a5a6',
         wallColor2: '#7f8c8d',
         skyColor: 0x6bb3d9,

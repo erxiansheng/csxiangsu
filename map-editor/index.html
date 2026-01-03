@@ -26,7 +26,6 @@
                 <button id="cloudLoad" class="tool-btn">☁️ 云端地图</button>
             </div>
             <div class="toolbar-section">
-                <button id="addFloor" class="tool-btn">一键铺地板</button>
                 <button id="addWalls" class="tool-btn">一键围墙</button>
                 <button id="rotateMap90" class="tool-btn">🔄 整体旋转90°</button>
                 <button id="eraserTool" class="tool-btn">🧹 橡皮擦</button>
@@ -78,6 +77,10 @@
                 <div class="object-item" data-type="wall" draggable="true">
                     <div class="preview wall"></div>
                     <span>墙面</span>
+                </div>
+                <div class="object-item" data-type="roof" draggable="true">
+                    <div class="preview roof"></div>
+                    <span>房顶</span>
                 </div>
                 <div class="object-item" data-type="box" draggable="true">
                     <div class="preview box"></div>
@@ -215,6 +218,10 @@
                     <div class="prop-group">
                         <label>物件数量</label>
                         <span id="cloud-save-count">-</span>
+                    </div>
+                    <div class="prop-group">
+                        <label>保存密码</label>
+                        <input type="password" id="cloud-save-password" value="123" placeholder="请输入密码">
                     </div>
                 </div>
                 <div id="cloud-save-status" class="cloud-status" style="display:none;"></div>

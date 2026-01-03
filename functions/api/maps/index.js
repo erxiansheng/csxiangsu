@@ -12,6 +12,11 @@ const corsHeaders = {
     'Content-Type': 'application/json'
 };
 
+// 从环境变量获取保存密码
+function getSavePassword() {
+    return process.env.SAVE_PASSWORD || '123';
+}
+
 async function handleRequest(request) {
     const method = request.method;
 
@@ -62,6 +67,14 @@ async function handlePost(request) {
     try {
         const mapData = await request.json();
 
+        // 验证密码（从环境变量获取）
+        if (mapData.password !== getSavePassword()) {
+            return new Response(JSON.stringify({ error: '密码错误' }), {
+                status: 403,
+                headers: corsHeaders
+            });
+        }
+
         if (!mapData.name) {
             return new Response(JSON.stringify({ error: '缺少地图名称' }), {
                 status: 400,
@@ -72,7 +85,17 @@ async function handlePost(request) {
         const edgeKV = new EdgeKV({ namespace: NAMESPACE });
         const mapId = mapData.name;
         const now = new Date().toISOString();
+        
+        // 获取现有地图数据以保留点赞数
+        let existingMap = null;
+        try {
+            existingMap = await edgeKV.get('map:' + mapId, { type: 'json' });
+        } catch (e) {}
+        
+        // 保留点赞数，删除密码字段
+        delete mapData.password;
         mapData.updatedAt = now;
+        mapData.likes = existingMap?.likes || 0;
 
         // 保存地图数据
         await edgeKV.put('map:' + mapId, JSON.stringify(mapData));
@@ -88,7 +111,9 @@ async function handlePost(request) {
             id: mapId,
             name: mapId,
             displayName: mapData.displayName || mapId,
-            updatedAt: now
+            updatedAt: now,
+            likes: mapData.likes || 0,
+            thumbnail: mapData.thumbnail || null
         };
 
         if (existingIndex >= 0) {

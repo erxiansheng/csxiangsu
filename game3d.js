@@ -1036,13 +1036,39 @@ class PixelCS3D {
             maps.forEach(map => {
                 const item = document.createElement('div');
                 item.className = 'cloud-map-item';
+                const likes = map.likes || 0;
+                const thumbnail = map.thumbnail || '';
+                
                 item.innerHTML = `
+                    ${thumbnail ? `<div class="cloud-map-thumb"><img src="${thumbnail}" alt=""></div>` : '<div class="cloud-map-thumb no-thumb">无预览</div>'}
                     <div class="cloud-map-item-info">
                         <div class="cloud-map-item-name">${this.escapeHtml(map.displayName || map.name)}</div>
                         <div class="cloud-map-item-id">${this.escapeHtml(map.id)}</div>
                     </div>
+                    <div class="cloud-map-item-actions">
+                        <button class="pixel-btn small cloud-like-btn" data-id="${this.escapeHtml(map.id)}">👍 <span class="like-count">${likes}</span></button>
+                    </div>
                 `;
-                item.addEventListener('click', () => this.selectCloudMap(map.id));
+                
+                // 点击地图项选择地图
+                item.querySelector('.cloud-map-item-info').addEventListener('click', () => this.selectCloudMap(map.id));
+                item.querySelector('.cloud-map-thumb').addEventListener('click', () => this.selectCloudMap(map.id));
+                
+                // 点赞按钮
+                item.querySelector('.cloud-like-btn').addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    const btn = e.currentTarget;
+                    btn.disabled = true;
+                    try {
+                        const result = await MapCloudService.likeMap(map.id);
+                        btn.querySelector('.like-count').textContent = result.likes;
+                    } catch (err) {
+                        console.error('点赞失败:', err);
+                    } finally {
+                        btn.disabled = false;
+                    }
+                });
+                
                 listEl.appendChild(item);
             });
         } catch (err) {
@@ -1169,8 +1195,8 @@ class PixelCS3D {
         MapConfigs[mapId] = {
             displayName: mapData.displayName || '自定义地图',
             gameMode: gameMode,
-            floorColor1: mapData.floorColor1 || '#8b7355',
-            floorColor2: mapData.floorColor2 || '#7a6245',
+            floorColor1: mapData.floorColor1 || '#c4a574',
+            floorColor2: mapData.floorColor2 || '#a68b5b',
             wallColor1: mapData.wallColor1 || '#95a5a6',
             wallColor2: mapData.wallColor2 || '#7f8c8d',
             skyColor: skyColor,
@@ -2087,7 +2113,7 @@ class PixelCS3D {
             for (const [playerId, mesh] of Object.entries(this.playerMeshes)) {
                 if (playerId === this.playerId) continue;
                 const dist = mesh.position.distanceTo(position);
-                if (dist < 10 && this.ws && this.ws.readyState === WebSocket.OPEN) {
+                if (dist < 20 && this.ws && this.ws.readyState === WebSocket.OPEN) {
                     this.ws.send(JSON.stringify({ action: 'grenade_hit', target_id: playerId, distance: dist }));
                 }
             }

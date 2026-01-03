@@ -100,8 +100,18 @@ class Minimap {
         ctx.lineWidth = 1;
         
         // 使用地图配置中的障碍物数据（更准确）
+        // 过滤掉地板和房顶，只显示墙壁等障碍物
         if (mapConfig.obstacles && mapConfig.obstacles.length > 0) {
             mapConfig.obstacles.forEach(o => {
+                // 跳过地板和房顶类型
+                if (o.textureType === 'floor' || o.type === 'floor' || o.type === 'roof' || o.isRoof) {
+                    return;
+                }
+                // 跳过高度很低的物件（可能是地板）
+                if (o.h <= 1) {
+                    return;
+                }
+                
                 const pos = this.worldToMinimap(o.x, o.z);
                 // 使用原始尺寸，不要扩大
                 const w = Math.max(1, o.w * scale);
