@@ -5,11 +5,24 @@
 
 const NAMESPACE = 'game-maps';
 
-// 获取保存密码 - ESA 支持 process.env
-// 需要在 ESA 控制台配置环境变量 SAVE_PASSWORD
-const SAVE_PASSWORD = (typeof process !== 'undefined' && process.env) 
-    ? process.env.SAVE_PASSWORD
-    : undefined;
+// 调试信息
+let DEBUG_INFO = {
+    hasProcess: typeof process !== 'undefined',
+    hasProcessEnv: typeof process !== 'undefined' && !!process.env,
+    envKeys: [],
+    SAVE_PASSWORD: null
+};
+
+try {
+    if (typeof process !== 'undefined' && process.env) {
+        DEBUG_INFO.envKeys = Object.keys(process.env);
+        DEBUG_INFO.SAVE_PASSWORD = process.env.SAVE_PASSWORD;
+    }
+} catch (e) {
+    DEBUG_INFO.error = e.message;
+}
+
+const SAVE_PASSWORD = DEBUG_INFO.SAVE_PASSWORD;
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -165,23 +178,12 @@ async function saveMap(request) {
     try {
         const mapData = await request.json();
         
-        // 调试日志
-        console.log('=== 密码调试 ===');
-        console.log('typeof process:', typeof process);
-        console.log('process.env:', typeof process !== 'undefined' ? JSON.stringify(process.env) : 'undefined');
-        console.log('SAVE_PASSWORD:', SAVE_PASSWORD);
-        console.log('输入密码:', mapData.password);
-        console.log('================');
-        
         // 验证密码 - 严格比较
         if (!mapData.password || String(mapData.password).trim() !== SAVE_PASSWORD) {
             return new Response(JSON.stringify({ 
                 error: '密码错误',
-                debug: {
-                    hasProcess: typeof process !== 'undefined',
-                    envPassword: SAVE_PASSWORD,
-                    inputPassword: mapData.password
-                }
+                debug: DEBUG_INFO,
+                inputPassword: mapData.password
             }), {
                 status: 403,
                 headers: corsHeaders
