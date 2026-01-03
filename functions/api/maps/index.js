@@ -1,7 +1,6 @@
 /**
- * ESA Pages 函数 - 地图 API
+ * ESA 边缘函数 - 地图列表 API
  * 路由: GET/POST /api/maps
- * 使用 EdgeKV 边缘存储
  */
 
 const NAMESPACE = 'game-maps';
@@ -13,17 +12,37 @@ const corsHeaders = {
     'Content-Type': 'application/json'
 };
 
+async function handleRequest(request) {
+    const method = request.method;
+
+    // 处理 CORS 预检请求
+    if (method === 'OPTIONS') {
+        return new Response(null, { headers: corsHeaders });
+    }
+
+    if (method === 'GET') {
+        return handleGet();
+    } else if (method === 'POST') {
+        return handlePost(request);
+    }
+
+    return new Response(JSON.stringify({ error: 'Method Not Allowed' }), {
+        status: 405,
+        headers: corsHeaders
+    });
+}
+
 // 获取地图列表
 async function handleGet() {
     try {
         const edgeKV = new EdgeKV({ namespace: NAMESPACE });
-        const indexData = await edgeKV.get('maps:index', { type: 'json' });
+        const value = await edgeKV.get('maps:index', { type: 'json' });
         
-        if (indexData === undefined) {
+        if (value === undefined) {
             return new Response(JSON.stringify([]), { headers: corsHeaders });
         }
 
-        const maps = indexData.sort((a, b) => {
+        const maps = value.sort((a, b) => {
             if (!a.updatedAt) return 1;
             if (!b.updatedAt) return -1;
             return new Date(b.updatedAt) - new Date(a.updatedAt);
@@ -55,8 +74,8 @@ async function handlePost(request) {
         const now = new Date().toISOString();
         mapData.updatedAt = now;
 
-        // 保存地图数据（put 成功返回 undefined）
-        await edgeKV.put(`map:${mapId}`, JSON.stringify(mapData));
+        // 保存地图数据
+        await edgeKV.put('map:' + mapId, JSON.stringify(mapData));
 
         // 更新索引
         let indexData = await edgeKV.get('maps:index', { type: 'json' });
@@ -93,20 +112,6 @@ async function handlePost(request) {
     }
 }
 
-export async function onRequest(context) {
-    // 处理 CORS 预检请求
-    if (context.request.method === 'OPTIONS') {
-        return new Response(null, { headers: corsHeaders });
-    }
-
-    if (context.request.method === 'GET') {
-        return handleGet();
-    } else if (context.request.method === 'POST') {
-        return handlePost(context.request);
-    }
-
-    return new Response(JSON.stringify({ error: 'Method Not Allowed' }), {
-        status: 405,
-        headers: corsHeaders
-    });
-}
+export default {
+    fetch: handleRequest
+};
