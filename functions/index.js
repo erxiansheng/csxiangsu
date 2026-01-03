@@ -4,7 +4,7 @@
  */
 
 const NAMESPACE = 'game-maps';
-const SAVE_PASSWORD = process.env.SAVE_PASSWORD || '123'; // 优先使用环境变量，默认123
+const SAVE_PASSWORD = '123'; // ESA不支持process.env，使用硬编码
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
