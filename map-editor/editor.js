@@ -2225,12 +2225,12 @@ class MapEditor {
             mapData.thumbnail = this.generateThumbnail();
             const result = await MapCloudService.saveMap(mapData, password);
             
-            statusEl.textContent = '✓ 保存成功！';
+            statusEl.textContent = '✓ 保存成功！数据同步中，请稍后刷新列表';
             statusEl.className = 'cloud-status success';
             
             setTimeout(() => {
                 this.closeCloudSaveModal();
-            }, 1000);
+            }, 1500);
         } catch (err) {
             statusEl.textContent = '✗ ' + err.message;
             statusEl.className = 'cloud-status error';
