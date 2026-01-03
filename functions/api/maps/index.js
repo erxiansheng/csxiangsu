@@ -119,9 +119,12 @@ async function handleLike(request) {
 async function handlePost(request) {
     try {
         const mapData = await request.json();
+        
+        // 获取环境变量中的密码
+        const correctPassword = process.env.SAVE_PASSWORD || '123';
 
-        // 验证密码
-        if (!mapData.password || mapData.password !== SAVE_PASSWORD) {
+        // 验证密码 - 严格比较
+        if (!mapData.password || String(mapData.password).trim() !== String(correctPassword).trim()) {
             return new Response(JSON.stringify({ error: '密码错误' }), {
                 status: 403,
                 headers: corsHeaders
@@ -148,16 +151,29 @@ async function handlePost(request) {
         const mapId = mapData.name;
         const now = new Date().toISOString();
         
-        // 获取现有地图数据以保留点赞数
+        // 检查地图是否已存在
         let existingMap = null;
         try {
             existingMap = await edgeKV.get('map:' + mapId, { type: 'json' });
         } catch (e) {}
         
-        // 保留点赞数，删除密码字段
+        // 如果地图已存在，返回错误（不允许覆盖）
+        if (existingMap) {
+            return new Response(JSON.stringify({ error: '地图ID已存在，请使用其他名称' }), {
+                status: 409,
+                headers: corsHeaders
+            });
+        }
+        
+        // 删除密码字段
         delete mapData.password;
         mapData.updatedAt = now;
-        mapData.likes = existingMap?.likes || 0;
+        mapData.likes = 0;
+        
+        // 确保缩略图字段存在
+        if (!mapData.thumbnail) {
+            mapData.thumbnail = null;
+        }
 
         // 保存地图数据
         await edgeKV.put('map:' + mapId, JSON.stringify(mapData));
@@ -168,22 +184,16 @@ async function handlePost(request) {
             indexData = [];
         }
         
-        const existingIndex = indexData.findIndex(m => m.id === mapId);
         const mapMeta = {
             id: mapId,
             name: mapId,
             displayName: mapData.displayName || mapId,
             updatedAt: now,
-            likes: mapData.likes || 0,
-            thumbnail: mapData.thumbnail || null
+            likes: 0,
+            thumbnail: mapData.thumbnail
         };
 
-        if (existingIndex >= 0) {
-            indexData[existingIndex] = mapMeta;
-        } else {
-            indexData.push(mapMeta);
-        }
-
+        indexData.push(mapMeta);
         await edgeKV.put('maps:index', JSON.stringify(indexData));
 
         return new Response(JSON.stringify({
@@ -192,7 +202,7 @@ async function handlePost(request) {
             updatedAt: now
         }), { headers: corsHeaders });
     } catch (e) {
-        return new Response(JSON.stringify({ error: '保存失败: ' + e }), {
+        return new Response(JSON.stringify({ error: '保存失败: ' + e.message }), {
             status: 500,
             headers: corsHeaders
         });

@@ -2245,19 +2245,33 @@ class MapEditor {
             // 保存当前相机状态
             const oldPos = this.camera.position.clone();
             const oldTarget = this.cameraTarget.clone();
+            const oldAngleX = this.cameraAngleX;
+            const oldAngleY = this.cameraAngleY;
+            const oldDistance = this.cameraDistance;
             
-            // 设置俯视角度
-            this.camera.position.set(0, 400, 0);
+            // 获取地图大小
+            const mapSize = parseInt(document.getElementById('mapSize').value) || 300;
+            
+            // 设置俯视角度，根据地图大小调整高度
+            const cameraHeight = mapSize * 1.5;
+            this.camera.position.set(0, cameraHeight, cameraHeight * 0.3);
             this.camera.lookAt(0, 0, 0);
             
-            // 渲染并获取图像
+            // 强制渲染一帧
             this.renderer.render(this.scene, this.camera);
-            const dataUrl = this.renderer.domElement.toDataURL('image/jpeg', 0.5);
+            
+            // 获取图像数据（使用较低质量减少数据量）
+            const dataUrl = this.renderer.domElement.toDataURL('image/jpeg', 0.4);
             
             // 恢复相机状态
             this.camera.position.copy(oldPos);
-            this.camera.lookAt(oldTarget);
+            this.cameraTarget.copy(oldTarget);
+            this.cameraAngleX = oldAngleX;
+            this.cameraAngleY = oldAngleY;
+            this.cameraDistance = oldDistance;
+            this.updateCameraPosition();
             
+            console.log('缩略图生成成功，大小:', Math.round(dataUrl.length / 1024), 'KB');
             return dataUrl;
         } catch (e) {
             console.error('生成缩略图失败:', e);
