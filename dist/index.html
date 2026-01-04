@@ -2,16 +2,30 @@
 <html lang="zh">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="screen-orientation" content="landscape">
 <meta name="x5-orientation" content="landscape">
 <meta name="full-screen" content="yes">
 <meta name="x5-fullscreen" content="true">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="CS 1.6">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="apple-touch-icon" href="image/icon.png">
 <title>CS 1.6 像素版 3D</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect fill='%23333' width='32' height='32' rx='4'/><text x='16' y='22' font-size='16' font-family='Arial' font-weight='bold' fill='%23ff6600' text-anchor='middle'>CS</text></svg>">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<div id="ios-pwa-prompt" style="display: none;">
+<div class="ios-prompt-content">
+<div class="ios-prompt-close" id="ios-prompt-close">×</div>
+<div class="ios-prompt-icon">📱</div>
+<div class="ios-prompt-title">添加到主屏幕</div>
+<div class="ios-prompt-text">点击右下角 <b>共享</b> → <b>更多</b> → <b>添加到主屏幕</b><br>实现全屏游玩</div>
+<button id="ios-prompt-dismiss" class="ios-prompt-btn">知道了</button>
+</div>
+</div>
 <div id="rotate-screen-hint">
 <div class="rotate-icon">📱</div>
 <div>请将手机横屏</div>
