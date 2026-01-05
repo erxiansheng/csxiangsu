@@ -17,6 +17,15 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<div id="pixel-toast-overlay"></div>
+<div id="pixel-toast">
+<div class="pixel-toast-header">
+<span class="pixel-toast-icon">📢</span>
+<span class="pixel-toast-title">提示</span>
+</div>
+<div class="pixel-toast-body">消息内容</div>
+<button class="pixel-toast-btn">确定</button>
+</div>
 <div id="ios-pwa-prompt" style="display: none;">
 <div class="ios-prompt-content">
 <div class="ios-prompt-close" id="ios-prompt-close">×</div>
@@ -41,36 +50,60 @@
 <button id="music-toggle" class="music-btn">🔊</button>
 </div>
 <div id="menu">
+<div id="mobile-drawer-btns">
+<button id="drawer-help-btn" class="drawer-toggle-btn">🎮</button>
+<button id="drawer-rooms-btn" class="drawer-toggle-btn">🌐</button>
+<button id="drawer-news-btn" class="drawer-toggle-btn">📢</button>
+</div>
+<div id="mobile-drawer" class="drawer-hidden">
+<div class="drawer-header">
+<span id="drawer-title">标题</span>
+<button id="drawer-close" class="drawer-close-btn">✕</button>
+</div>
+<div id="drawer-content"></div>
+</div>
+<div id="drawer-overlay"></div>
 <div class="menu-wrapper">
 <div class="info-card gameplay-card">
 <h3>🎮 游戏玩法</h3>
 <div class="gameplay-content">
 <div class="control-section">
-<h4>基础操作</h4>
+<h4>🎯 基础操作</h4>
 <p><span class="key">W A S D</span> 移动</p>
 <p><span class="key">鼠标</span> 视角控制</p>
-<p><span class="key">左键</span> 射击</p>
+<p><span class="key">左键</span> 射击/攻击</p>
 <p><span class="key">右键</span> 开镜 (AWP)</p>
+<p><span class="key">滚轮</span> 切换武器</p>
 </div>
 <div class="control-section">
-<h4>进阶操作</h4>
+<h4>🏃 进阶操作</h4>
 <p><span class="key">空格</span> 跳跃</p>
 <p><span class="key">Ctrl</span> 下蹲</p>
 <p><span class="key">R</span> 换弹</p>
 <p><span class="key">Q</span> 快速切枪</p>
+<p><span class="key">E</span> 拆弹/安装C4</p>
 </div>
 <div class="control-section">
-<h4>武器切换</h4>
-<p><span class="key">1</span> 主武器</p>
-<p><span class="key">2</span> 副武器</p>
-<p><span class="key">3</span> 刀</p>
-<p><span class="key">4</span> 手雷</p>
-<p><span class="key">5</span> C4炸弹</p>
+<h4>🔫 武器切换</h4>
+<p><span class="key">1</span> 主武器 (AK/M4/AWP)</p>
+<p><span class="key">2</span> 副武器 (手枪)</p>
+<p><span class="key">3</span> 近战武器 (刀)</p>
+<p><span class="key">4</span> 投掷物 (手雷)</p>
+<p><span class="key">5</span> C4炸弹 (T阵营)</p>
 </div>
 <div class="control-section">
-<h4>其他</h4>
-<p><span class="key">B</span> 购买武器</p>
-<p><span class="key">ESC</span> 设置菜单</p>
+<h4>⚙️ 系统功能</h4>
+<p><span class="key">B</span> 购买武器菜单</p>
+<p><span class="key">Tab</span> 查看战绩</p>
+<p><span class="key">ESC</span> 设置/暂停</p>
+<p><span class="key">G</span> 丢弃武器（待开发）</p>
+</div>
+<div class="control-section">
+<h4>💡 游戏提示</h4>
+<p>• 爆头伤害翻倍</p>
+<p>• 蹲下射击更精准</p>
+<p>• AWP可双击右键二倍镜</p>
+<p>• 连杀会有特殊音效</p>
 </div>
 </div>
 </div>
@@ -92,21 +125,25 @@
 <div id="createOptions" style="display: none;">
 <div class="input-group">
 <label>游戏模式</label>
-<select id="gameMode">
+<div class="pixel-select-wrapper">
+<select id="gameMode" class="pixel-select">
 <option value="deathmatch">团队竞技 (10分钟)</option>
 <option value="defuse">爆破模式 (回合制)</option>
 <option value="custom">自定义地图</option>
 </select>
 </div>
+</div>
 <div class="input-group" id="targetKillsGroup">
 <label>目标击杀数</label>
-<select id="targetKills">
+<div class="pixel-select-wrapper">
+<select id="targetKills" class="pixel-select">
 <option value="10">10 击杀</option>
 <option value="20" selected>20 击杀</option>
 <option value="30">30 击杀</option>
 <option value="50">50 击杀</option>
 <option value="100">100 击杀</option>
 </select>
+</div>
 </div>
 <div class="input-group" id="customMapGroup" style="display: none;">
 <label>导入地图</label>
@@ -119,12 +156,14 @@
 </div>
 <div class="input-group" id="mapSelectGroup">
 <label>选择地图</label>
-<select id="mapSelect">
+<div class="pixel-select-wrapper">
+<select id="mapSelect" class="pixel-select">
 </select>
 </div>
 </div>
+</div>
 <div class="input-group">
-<label>选择阵营 (每队最多5人)</label>
+<label>选择阵营 (每队最多8人)</label>
 <div class="team-select">
 <button type="button" id="teamCT" class="team-btn ct-btn active">反恐精英 (CT)</button>
 <button type="button" id="teamT" class="team-btn t-btn">恐怖分子 (T)</button>
@@ -140,6 +179,54 @@
 </div>
 <button id="joinBtn" class="pixel-btn">加入游戏</button>
 <button id="createBtn" class="pixel-btn" style="display: none;">创建房间</button>
+<div id="welcome-banner" class="welcome-banner">
+<div class="scanline"></div>
+<div class="welcome-text">
+<span class="welcome-line1">🎮 WELCOME TO 🎮</span>
+<span class="welcome-line2">CS 1.6 像素版-阿里云参赛作品</span>
+<span class="welcome-line3">
+<span class="pixel-star">✦</span>
+新年快乐 2026
+<span class="pixel-star">✦</span>
+</span>
+</div>
+</div>
+</div>
+<div class="right-cards">
+<div class="info-card public-rooms-card">
+<h3>🌐 公开房间</h3>
+<div class="public-rooms-grid" id="public-rooms-grid">
+<button class="public-room-btn defuse" data-room="DEFUSE01" data-mode="defuse" data-map="dust2">
+<span class="room-name">爆破1号</span>
+<span class="room-map">沙漠灰</span>
+<span class="room-players" id="room-DEFUSE01-players">0/16</span>
+</button>
+<button class="public-room-btn defuse" data-room="DEFUSE02" data-mode="defuse" data-map="dust2">
+<span class="room-name">爆破2号</span>
+<span class="room-map">沙漠灰</span>
+<span class="room-players" id="room-DEFUSE02-players">0/16</span>
+</button>
+<button class="public-room-btn defuse" data-room="DEFUSE03" data-mode="defuse" data-map="dust2">
+<span class="room-name">爆破3号</span>
+<span class="room-map">沙漠灰</span>
+<span class="room-players" id="room-DEFUSE03-players">0/16</span>
+</button>
+<button class="public-room-btn deathmatch" data-room="TEAM0001" data-mode="deathmatch" data-map="indoor">
+<span class="room-name">竞技1号</span>
+<span class="room-map">室内竞技场</span>
+<span class="room-players" id="room-TEAM0001-players">0/16</span>
+</button>
+<button class="public-room-btn deathmatch" data-room="TEAM0002" data-mode="deathmatch" data-map="indoor">
+<span class="room-name">竞技2号</span>
+<span class="room-map">室内竞技场</span>
+<span class="room-players" id="room-TEAM0002-players">0/16</span>
+</button>
+<button class="public-room-btn deathmatch" data-room="TEAM0003" data-mode="deathmatch" data-map="indoor">
+<span class="room-name">竞技3号</span>
+<span class="room-map">室内竞技场</span>
+<span class="room-players" id="room-TEAM0003-players">0/16</span>
+</button>
+</div>
 </div>
 <div class="info-card announcement-card">
 <h3>📢 游戏公告</h3>
@@ -149,10 +236,13 @@
 </div>
 </div>
 </div>
+</div>
 <div id="game" style="display: none;">
 <div id="crosshair">+</div>
 <div id="crosshair-target"></div>
-<div id="scope" style="display: none;"></div>
+<div id="scope" style="display: none;">
+<div id="scope-red-dot"></div>
+</div>
 <div id="kill-feedback">
 <div id="kill-icon"></div>
 <div id="kill-streak-icon"></div>
@@ -218,6 +308,7 @@
 <button id="mobile-switch" class="mobile-btn">切枪</button>
 <button id="mobile-buy" class="mobile-btn">购买</button>
 <button id="mobile-settings" class="mobile-btn">⚙</button>
+<button id="mobile-scoreboard" class="mobile-btn">战绩</button>
 </div>
 <button id="mobile-defuse" class="mobile-btn defuse-btn" style="display: none;">拆包</button>
 <div id="mobile-weapon-bar">
@@ -226,6 +317,31 @@
 <button class="weapon-slot" data-slot="3">🔪</button>
 <button class="weapon-slot" data-slot="4">💣</button>
 <button class="weapon-slot" data-slot="5">C4</button>
+</div>
+</div>
+<div id="scoreboard-panel">
+<h3>战绩面板</h3>
+<div class="scoreboard-teams">
+<div class="scoreboard-team" id="scoreboard-ct">
+<div class="scoreboard-team-header ct">反恐精英 (CT) - <span id="scoreboard-ct-score">0</span></div>
+<div class="scoreboard-stats-header">
+<span style="flex:1;text-align:left;">玩家</span>
+<span>K</span>
+<span>D</span>
+<span>HP</span>
+</div>
+<div id="scoreboard-ct-players"></div>
+</div>
+<div class="scoreboard-team" id="scoreboard-t">
+<div class="scoreboard-team-header t">恐怖分子 (T) - <span id="scoreboard-t-score">0</span></div>
+<div class="scoreboard-stats-header">
+<span style="flex:1;text-align:left;">玩家</span>
+<span>K</span>
+<span>D</span>
+<span>HP</span>
+</div>
+<div id="scoreboard-t-players"></div>
+</div>
 </div>
 </div>
 <div id="hud">
@@ -295,6 +411,30 @@
 <div class="modal-actions">
 <button id="cloud-map-refresh" class="pixel-btn small">🔄 刷新</button>
 <button id="cloud-map-close" class="pixel-btn small">关闭</button>
+</div>
+</div>
+</div>
+<div id="quick-join-modal" class="modal-overlay" style="display: none;">
+<div class="modal-box quick-join-box">
+<h3>🚀 快速加入</h3>
+<div class="quick-join-room-info">
+<span id="quick-join-room-name"></span>
+<span id="quick-join-room-mode"></span>
+</div>
+<div class="input-group">
+<label>输入你的名称</label>
+<input type="text" id="quickJoinName" placeholder="2-8个字符" maxlength="8" minlength="2">
+</div>
+<div class="input-group">
+<label>选择阵营</label>
+<div class="team-select quick-join-team">
+<button type="button" id="quickJoinTeamCT" class="team-btn ct-btn active">反恐精英 (CT)</button>
+<button type="button" id="quickJoinTeamT" class="team-btn t-btn">恐怖分子 (T)</button>
+</div>
+</div>
+<div class="modal-actions">
+<button id="quick-join-confirm" class="pixel-btn">加入游戏</button>
+<button id="quick-join-cancel" class="pixel-btn small">取消</button>
 </div>
 </div>
 </div>
