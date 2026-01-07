@@ -4,8 +4,17 @@
  */
 
 const NAMESPACE = 'game-maps';
-// 优先从环境变量获取密码，如果没有则使用默认值
-const SAVE_PASSWORD = process.env.SAVE_PASSWORD || '123';
+// 默认密码，会在运行时尝试从环境变量覆盖
+let SAVE_PASSWORD = '123';
+
+// 尝试从环境变量获取密码（兼容不同的 ESA 环境变量访问方式）
+try {
+    if (typeof process !== 'undefined' && process.env && process.env.SAVE_PASSWORD) {
+        SAVE_PASSWORD = process.env.SAVE_PASSWORD;
+    }
+} catch (e) {
+    // 环境变量不可用，使用默认值
+}
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
