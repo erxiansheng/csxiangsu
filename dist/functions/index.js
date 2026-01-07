@@ -4,7 +4,8 @@
  */
 
 const NAMESPACE = 'game-maps';
-const SAVE_PASSWORD = '123';
+// 优先从环境变量获取密码，如果没有则使用默认值
+const SAVE_PASSWORD = process.env.SAVE_PASSWORD || '123';
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
