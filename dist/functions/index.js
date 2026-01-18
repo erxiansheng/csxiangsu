@@ -6,6 +6,8 @@
 const NAMESPACE = 'game-maps';
 // 默认密码（作为后备值）
 const DEFAULT_SAVE_PASSWORD = '123';
+// 默认删除密码（作为后备值）
+const DEFAULT_DELETE_PASSWORD = 'admin123';
 // 默认公告（作为后备值）
 const DEFAULT_ANNOUNCEMENTS = [
     {"date": "2025-12-28", "content": "🎉 欢迎来到 CS 1.6 像素版！"},
@@ -13,6 +15,15 @@ const DEFAULT_ANNOUNCEMENTS = [
 ];
 // 默认 WebSocket 服务器地址（作为后备值）
 const DEFAULT_WS_SERVER_URL = 'wss://cs16xs.188np.cn';
+// 默认公开房间配置（作为后备值）
+const DEFAULT_PUBLIC_ROOMS = [
+    { id: 'DEFUSE01', mode: 'defuse', map: 'dust2' },
+    { id: 'DEFUSE02', mode: 'defuse', map: 'dust2' },
+    { id: 'DEFUSE03', mode: 'defuse', map: 'dust2' },
+    { id: 'TEAM0001', mode: 'deathmatch', map: 'indoor' },
+    { id: 'TEAM0002', mode: 'deathmatch', map: 'indoor' },
+    { id: 'TEAM0003', mode: 'deathmatch', map: 'indoor' }
+];
 
 // 从 KV 读取保存密码
 async function getSavePassword() {
@@ -27,6 +38,22 @@ async function getSavePassword() {
         return DEFAULT_SAVE_PASSWORD;
     } catch (e) {
         return DEFAULT_SAVE_PASSWORD;
+    }
+}
+
+// 从 KV 读取删除密码
+async function getDeletePassword() {
+    try {
+        const edgeKV = new EdgeKV({ namespace: NAMESPACE });
+        const password = await edgeKV.get('DELETE_PASSWORD', { type: 'text' });
+        // 清理可能的引号
+        if (password) {
+            const cleanPassword = password.trim().replace(/^["']|["']$/g, '');
+            return cleanPassword || DEFAULT_DELETE_PASSWORD;
+        }
+        return DEFAULT_DELETE_PASSWORD;
+    } catch (e) {
+        return DEFAULT_DELETE_PASSWORD;
     }
 }
 
@@ -67,6 +94,27 @@ async function getDefaultWSServerURL() {
     }
 }
 
+// 从 KV 读取公开房间配置
+async function getPublicRooms() {
+    try {
+        const edgeKV = new EdgeKV({ namespace: NAMESPACE });
+        const rooms = await edgeKV.get('PUBLIC_ROOMS', { type: 'json' });
+        console.log('[ESA Function] 从 KV 读取的公开房间:', rooms);
+        
+        // 如果读取到的是数组，直接返回
+        if (Array.isArray(rooms)) {
+            return rooms;
+        }
+        
+        // 如果读取失败或不是数组，返回默认值
+        console.log('[ESA Function] 公开房间数据无效，使用默认值');
+        return DEFAULT_PUBLIC_ROOMS;
+    } catch (e) {
+        console.error('[ESA Function] 读取公开房间失败:', e);
+        return DEFAULT_PUBLIC_ROOMS;
+    }
+}
+
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
@@ -84,7 +132,7 @@ async function handleRequest(request) {
         return new Response(null, { headers: corsHeaders });
     }
 
-    // GET /api/config - 获取配置（服务器地址）
+    // GET /api/config - 获取配置（服务器地址、公开房间）
     if (path === '/api/config' && method === 'GET') {
         return getConfigAPI();
     }
@@ -119,10 +167,10 @@ async function handleRequest(request) {
             return getMap(mapId);
         }
 
-        // DELETE /api/maps/:id - 删除地图（已禁用）
-        // if (method === 'DELETE') {
-        //     return deleteMap(mapId);
-        // }
+        // DELETE /api/maps/:id - 删除地图（需要管理员密码）
+        if (method === 'DELETE') {
+            return deleteMap(mapId, request);
+        }
     }
 
     // 未匹配的 API 路由
@@ -136,8 +184,10 @@ async function handleRequest(request) {
 async function getConfigAPI() {
     try {
         const wsServerURL = await getDefaultWSServerURL();
+        const publicRooms = await getPublicRooms();
         return new Response(JSON.stringify({ 
-            wsServerURL: wsServerURL 
+            wsServerURL: wsServerURL,
+            publicRooms: publicRooms
         }), { headers: corsHeaders });
     } catch (e) {
         return new Response(JSON.stringify({ error: '获取配置失败: ' + e }), {
@@ -335,6 +385,58 @@ async function saveMap(request) {
         }), { headers: corsHeaders });
     } catch (e) {
         return new Response(JSON.stringify({ error: '保存失败: ' + e }), {
+            status: 500,
+            headers: corsHeaders
+        });
+    }
+}
+
+// 删除地图
+async function deleteMap(mapId, request) {
+    try {
+        // 从请求体读取密码
+        const data = await request.json();
+        
+        // 从 KV 读取删除密码并验证
+        const DELETE_PASSWORD = await getDeletePassword();
+        if (!data.password || String(data.password).trim() !== DELETE_PASSWORD) {
+            return new Response(JSON.stringify({ error: '管理员密码错误' }), {
+                status: 403,
+                headers: corsHeaders
+            });
+        }
+
+        const edgeKV = new EdgeKV({ namespace: NAMESPACE });
+        
+        // 检查地图是否存在
+        let existingMap = null;
+        try {
+            existingMap = await edgeKV.get('map:' + mapId, { type: 'json' });
+        } catch (e) {}
+        
+        if (!existingMap) {
+            return new Response(JSON.stringify({ error: '地图不存在' }), {
+                status: 404,
+                headers: corsHeaders
+            });
+        }
+        
+        // 删除地图数据
+        await edgeKV.delete('map:' + mapId);
+
+        // 从索引中移除
+        let indexData = await edgeKV.get('maps:index', { type: 'json' });
+        if (indexData && Array.isArray(indexData)) {
+            indexData = indexData.filter(m => m.id !== mapId);
+            await edgeKV.put('maps:index', JSON.stringify(indexData));
+        }
+
+        return new Response(JSON.stringify({
+            success: true,
+            message: '地图已删除'
+        }), { headers: corsHeaders });
+    } catch (e) {
+        return new Response(JSON.stringify({ error: '删除失败: ' + e }), {
             status: 500,
             headers: corsHeaders
         });
