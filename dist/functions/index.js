@@ -35,8 +35,18 @@ async function getAnnouncements() {
     try {
         const edgeKV = new EdgeKV({ namespace: NAMESPACE });
         const announcements = await edgeKV.get('ANNOUNCEMENTS', { type: 'json' });
-        return announcements || DEFAULT_ANNOUNCEMENTS;
+        console.log('[ESA Function] 从 KV 读取的公告:', announcements);
+        
+        // 如果读取到的是数组，直接返回
+        if (Array.isArray(announcements)) {
+            return announcements;
+        }
+        
+        // 如果读取失败或不是数组，返回默认值
+        console.log('[ESA Function] 公告数据无效，使用默认值');
+        return DEFAULT_ANNOUNCEMENTS;
     } catch (e) {
+        console.error('[ESA Function] 读取公告失败:', e);
         return DEFAULT_ANNOUNCEMENTS;
     }
 }
