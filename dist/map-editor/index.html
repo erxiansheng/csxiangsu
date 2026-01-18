@@ -222,6 +222,31 @@ WASD: 移动 | 鼠标右键: 旋转视角 | 滚轮: 缩放 | 左键: 选择/放�
 </div>
 </div>
 </div>
+<div id="cloud-delete-modal" class="modal">
+<div class="modal-content" style="width:400px;">
+<h3>🗑️ 删除云端地图</h3>
+<p style="color:#e74c3c;font-weight:bold;">⚠️ 此操作不可恢复！</p>
+<div class="cloud-save-info">
+<div class="prop-group">
+<label>地图ID</label>
+<span id="cloud-delete-id">-</span>
+</div>
+<div class="prop-group">
+<label>显示名称</label>
+<span id="cloud-delete-name">-</span>
+</div>
+<div class="prop-group">
+<label>管理员密码</label>
+<input type="password" id="cloud-delete-password" placeholder="请输入管理员密码">
+</div>
+</div>
+<div id="cloud-delete-status" class="cloud-status" style="display:none;"></div>
+<div class="modal-buttons">
+<button id="confirm-cloud-delete" class="tool-btn danger">确认删除</button>
+<button id="close-cloud-delete-modal" class="tool-btn">取消</button>
+</div>
+</div>
+</div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="../map-cloud.js"></script>
