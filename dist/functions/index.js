@@ -19,7 +19,12 @@ async function getSavePassword() {
     try {
         const edgeKV = new EdgeKV({ namespace: NAMESPACE });
         const password = await edgeKV.get('SAVE_PASSWORD', { type: 'text' });
-        return password || DEFAULT_SAVE_PASSWORD;
+        // 清理可能的引号（如果 KV 中存储的是 JSON 字符串）
+        if (password) {
+            const cleanPassword = password.trim().replace(/^["']|["']$/g, '');
+            return cleanPassword || DEFAULT_SAVE_PASSWORD;
+        }
+        return DEFAULT_SAVE_PASSWORD;
     } catch (e) {
         return DEFAULT_SAVE_PASSWORD;
     }
@@ -41,7 +46,12 @@ async function getDefaultWSServerURL() {
     try {
         const edgeKV = new EdgeKV({ namespace: NAMESPACE });
         const url = await edgeKV.get('DEFAULT_WS_SERVER_URL', { type: 'text' });
-        return url || DEFAULT_WS_SERVER_URL;
+        // 清理可能的引号（如果 KV 中存储的是 JSON 字符串）
+        if (url) {
+            const cleanUrl = url.trim().replace(/^["']|["']$/g, '');
+            return cleanUrl || DEFAULT_WS_SERVER_URL;
+        }
+        return DEFAULT_WS_SERVER_URL;
     } catch (e) {
         return DEFAULT_WS_SERVER_URL;
     }
