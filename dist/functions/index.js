@@ -4,16 +4,47 @@
  */
 
 const NAMESPACE = 'game-maps';
-// 默认密码，会在运行时尝试从环境变量覆盖
-let SAVE_PASSWORD = '123';
+// 默认密码（作为后备值）
+const DEFAULT_SAVE_PASSWORD = '123';
+// 默认公告（作为后备值）
+const DEFAULT_ANNOUNCEMENTS = [
+    {"date": "2025-12-28", "content": "🎉 欢迎来到 CS 1.6 像素版！"},
+    {"date": "2025-12-28", "content": "🔫 新增武器：AK47、M4A1、AWP"}
+];
+// 默认 WebSocket 服务器地址（作为后备值）
+const DEFAULT_WS_SERVER_URL = 'wss://cs16xs.188np.cn';
 
-// 尝试从环境变量获取密码（兼容不同的 ESA 环境变量访问方式）
-try {
-    if (typeof process !== 'undefined' && process.env && process.env.SAVE_PASSWORD) {
-        SAVE_PASSWORD = process.env.SAVE_PASSWORD;
+// 从 KV 读取保存密码
+async function getSavePassword() {
+    try {
+        const edgeKV = new EdgeKV({ namespace: NAMESPACE });
+        const password = await edgeKV.get('SAVE_PASSWORD', { type: 'text' });
+        return password || DEFAULT_SAVE_PASSWORD;
+    } catch (e) {
+        return DEFAULT_SAVE_PASSWORD;
     }
-} catch (e) {
-    // 环境变量不可用，使用默认值
+}
+
+// 从 KV 读取游戏公告
+async function getAnnouncements() {
+    try {
+        const edgeKV = new EdgeKV({ namespace: NAMESPACE });
+        const announcements = await edgeKV.get('ANNOUNCEMENTS', { type: 'json' });
+        return announcements || DEFAULT_ANNOUNCEMENTS;
+    } catch (e) {
+        return DEFAULT_ANNOUNCEMENTS;
+    }
+}
+
+// 从 KV 读取默认 WebSocket 服务器地址
+async function getDefaultWSServerURL() {
+    try {
+        const edgeKV = new EdgeKV({ namespace: NAMESPACE });
+        const url = await edgeKV.get('DEFAULT_WS_SERVER_URL', { type: 'text' });
+        return url || DEFAULT_WS_SERVER_URL;
+    } catch (e) {
+        return DEFAULT_WS_SERVER_URL;
+    }
 }
 
 const corsHeaders = {
@@ -31,6 +62,16 @@ async function handleRequest(request) {
     // 处理 CORS 预检请求
     if (method === 'OPTIONS') {
         return new Response(null, { headers: corsHeaders });
+    }
+
+    // GET /api/config - 获取配置（服务器地址）
+    if (path === '/api/config' && method === 'GET') {
+        return getConfigAPI();
+    }
+
+    // GET /api/announcements - 获取游戏公告
+    if (path === '/api/announcements' && method === 'GET') {
+        return getAnnouncementsAPI();
     }
 
     // GET /api/maps - 获取地图列表
@@ -69,6 +110,34 @@ async function handleRequest(request) {
         status: 404,
         headers: corsHeaders
     });
+}
+
+// 获取配置 API
+async function getConfigAPI() {
+    try {
+        const wsServerURL = await getDefaultWSServerURL();
+        return new Response(JSON.stringify({ 
+            wsServerURL: wsServerURL 
+        }), { headers: corsHeaders });
+    } catch (e) {
+        return new Response(JSON.stringify({ error: '获取配置失败: ' + e }), {
+            status: 500,
+            headers: corsHeaders
+        });
+    }
+}
+
+// 获取游戏公告 API
+async function getAnnouncementsAPI() {
+    try {
+        const announcements = await getAnnouncements();
+        return new Response(JSON.stringify(announcements), { headers: corsHeaders });
+    } catch (e) {
+        return new Response(JSON.stringify({ error: '获取公告失败: ' + e }), {
+            status: 500,
+            headers: corsHeaders
+        });
+    }
 }
 
 // 获取地图列表
@@ -170,7 +239,8 @@ async function saveMap(request) {
     try {
         const mapData = await request.json();
         
-        // 验证密码
+        // 从 KV 读取密码并验证
+        const SAVE_PASSWORD = await getSavePassword();
         if (!mapData.password || String(mapData.password).trim() !== SAVE_PASSWORD) {
             return new Response(JSON.stringify({ error: '密码错误' }), {
                 status: 403,
